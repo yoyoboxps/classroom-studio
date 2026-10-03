@@ -23,7 +23,7 @@
 
 # Classroom Studio · AI 創作教室
 
-Netlify + React / TypeScript + SCSS + Supabase。學生使用 Google 登入，老師建立班級、匯入 Email 名單並設定每人額度。圖片透過 OpenAI Responses API 的背景圖片生成工具，影片透過 xAI 照片轉影片 API。
+Netlify + React / TypeScript + SCSS + Supabase。學生使用 Google 登入，老師建立班級、設定人數上限與每人額度，再分享網址讓學生登入加入。圖片透過 OpenAI Responses API 的背景圖片生成工具，影片透過 xAI 照片轉影片 API。
 
 ## 目前可以使用的內容
 
@@ -61,9 +61,9 @@ set role = 'admin'
 where id = (select id from auth.users where email = 'YOUR_TEACHER_EMAIL');
 ```
 
-7. 重新登入後在老師後台建立班級、設定總點數與每人額度、匯入學生 Email。Email 採小寫並以供應商驗證身分為準；不允許僅靠邀請碼領取額度。
+7. 重新登入後在老師後台建立班級、設定總點數、每人額度與人數上限，複製班級連結分享給學生。學生以驗證過的 Google 帳號登入後自動加入，名額或未分配點數不足時拒絕加入；重複登入不會再分配一次。只有一個開放班級時，首頁登入也會自動加入；多個班級時使用班級專屬連結。
 8. 重新部署到 Netlify，使前端建置取得 VITE 變數。正式發佈後 Scheduled Function 每分鐘確認待完成任務，預覽部署不會執行排程。
-9. 正式課程前，用兩個學生帳號實測：非名單登入被拒、個人額度不足被拒、同時提交只允許一筆、成功扣點、失敗退款、關閉影片頁面後排程完成結算。
+9. 正式課程前，用兩個學生帳號實測：名額已滿被拒、個人額度不足被拒、同時提交只允許一筆、成功扣點、失敗退款、關閉影片頁面後排程完成結算。
 
 ## 不保存媒體的設計
 
@@ -82,7 +82,7 @@ where id = (select id from auth.users where email = 'YOUR_TEACHER_EMAIL');
 - 全帳號最多一個 processing/review 任務，以 partial unique index 保證。圖片請求以 `max_tool_calls: 1` 限制最多一次圖片工具呼叫。
 - 請求 UUID 保證重複提交不會重複呼叫模型；結算鎖定任務，重複查詢不會重複扣／退。
 - 可確認的 4xx 拒絕與終止失敗會退款；提交逾時、5xx 或無 provider ID 不自動重試／退款，改為 review，老師查核供應商後手動結算。
-- 學生改用其他帳號仍可能重複領取，老師 Email 白名單需確保一人一個帳號。
+- 自助加入以 Google 帳號識別；同一人使用不同帳號仍可能占用多個名額，老師可在學生列表核對。
 
 ## Netlify 部署
 
@@ -101,3 +101,9 @@ where id = (select id from auth.users where email = 'YOUR_TEACHER_EMAIL');
 - https://developers.openai.com/api/docs/guides/tools-image-generation
 - https://developers.openai.com/api/docs/guides/background
 - https://docs.x.ai/developers/model-capabilities/video/image-to-video
+
+## 網址自助加入更新
+
+既有專案請在 SQL Editor 執行 `supabase/migrations/20261003_link_enrollment.sql`。此 migration 不變更既有角色或額度；既有班級保持關閉自助加入，需由老師開啟 `self_enrollment` 並設定 `max_students`。新建班級預設開放。班級連結為 `https://你的網站/?class=班級UUID`。已套用至「歡喜人數」，上限15人。任何取得連結的已驗證 Google 帳號均可加入，老師可暫停班級停止加入與生成。沒有學生名單也能開課。
+
+驗證記錄（2026-10-03）：正式建置成功，14 項資料庫測試通過；正式資料庫以交易回復方式驗證首次加入100點與重複加入不增加分配，測試後學生與已分配點數皆為0。實際學生 Google 首次登入仍待開課試用。

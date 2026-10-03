@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+const pg = new PGlite();
+await pg.exec(`create role anon; create role authenticated; create role service_role;
+create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}');
+create function auth.uid() returns uuid language sql as $$ select null::uuid $$;`);
+await pg.exec((await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));
+const join=(c,u)=>pg.query('select join_class($1,$2) id',[c,u]);
+async function user(verified=true,provider='google'){const u=randomUUID();await pg.query(`insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data) values($1,$2,$3,$4)`,[u,`${u}@example.com`,verified?new Date().toISOString():null,{provider}]);return u;}
+async function classroom(capacity=15,total=1500){const c=randomUUID();await pg.query(`insert into classes(id,name,total,default_quota,image_cost,video_cost,expires_at,self_enrollment,max_students) values($1,'test',$2,100,5,20,now()+interval '1 day',true,$3)`,[c,total,capacity]);return c;}
+test('link enrollment creates one 100-point membership and repeat login allocates nothing extra',async()=>{const c=await classroom(),u=await user();const first=(await join(c,u)).rows[0].id;assert.equal((await join(c,u)).rows[0].id,first);assert.deepEqual((await pg.query('select quota,used,reserved from class_members where id=$1',[first])).rows[0],{quota:100,used:0,reserved:0});assert.equal((await pg.query('select allocated from classes where id=$1',[c])).rows[0].allocated,100);});
+test('simultaneous joins cannot overfill the final seat or allocate twice',async()=>{const c=await classroom(1),u=await user(),v=await user();const results=await Promise.allSettled([join(c,u),join(c,v)]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected').length,1);assert.equal((await pg.query('select allocated from classes where id=$1',[c])).rows[0].allocated,100);});
+test('pool exhaustion rolls back membership creation',async()=>{const c=await classroom(15,100);await join(c,await user());const u=await user();await assert.rejects(()=>join(c,u),/點數不足/);assert.equal((await pg.query('select count(*)::int n from class_members where class_id=$1',[c])).rows[0].n,1);});
+test('paused, expired and closed enrollment classes reject new students',async()=>{const c=await classroom(),u=await user();await pg.query('update classes set active=false where id=$1',[c]);await assert.rejects(()=>join(c,u),/暫停或到期/);await pg.query("update classes set active=true,expires_at=now()-interval '1 day' where id=$1",[c]);await assert.rejects(()=>join(c,u),/暫停或到期/);await pg.query("update classes set expires_at=now()+interval '1 day',self_enrollment=false where id=$1",[c]);await assert.rejects(()=>join(c,u),/未開放網址加入/);});
+test('unverified accounts and non-Google identities cannot enroll',async()=>{const c=await classroom(),u=await user(false),v=await user(true,'email');await assert.rejects(()=>join(c,u),/已驗證的 Google/);await assert.rejects(()=>join(c,v),/已驗證的 Google/);});
+test('students cannot bypass the server to invoke enrollment RPC',async()=>{const c=await classroom(),u=await user();await pg.exec('set role authenticated');try{await assert.rejects(()=>join(c,u),/permission denied/);}finally{await pg.exec('reset role');}});
+test('pre-imported students retain their quota and do not consume additional allocation',async()=>{const c=await classroom(),u=await user();const email=(await pg.query('select email from auth.users where id=$1',[u])).rows[0].email;await pg.query('select invite_students($1,$2::text[])',[c,[email]]);await join(c,u);assert.equal((await pg.query('select allocated from classes where id=$1',[c])).rows[0].allocated,100);assert.equal((await pg.query('select count(*)::int n from class_members where class_id=$1 and user_id=$2',[c,u])).rows[0].n,1);});
+test.after(async()=>{await pg.close();});

@@ -7,7 +7,7 @@ import { PGlite } from '@electric-sql/pglite';
 // Execute the production Postgres functions. Auth schema substitutes Supabase's host-owned schema.
 const pg = new PGlite();
 await pg.exec(`create role anon; create role authenticated; create role service_role;
-create schema auth; create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
+create schema auth; create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}', email_confirmed_at timestamptz, raw_app_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql as $$ select null::uuid $$;`);
 const schema=(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;','');
 await pg.exec(schema);
