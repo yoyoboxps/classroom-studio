@@ -271,3 +271,7 @@ html::-webkit-scrollbar {width:0;}
 .teacher-login { background: transparent; border: 0; color: #a9b2b7; text-decoration: underline; cursor: pointer; margin-top: 24px; font-size: .8rem; }
 .course-entry .course-error { margin: 12px 0 0; color: #ffad8a; font-size: .85rem; }
 .class-settings .course-code-display { font-size: 1rem; strong { color: #ff8b39; letter-spacing: .12em; } }
+
+.roster-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.students-panel .roster-sync { margin-top:8px; font-size:.75rem; }
+@media(max-width:760px) { .students-panel .section-header { flex-wrap:wrap; gap:16px; } }
