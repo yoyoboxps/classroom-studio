@@ -1,6 +1,6 @@
 # Classroom Studio · 第二款版型
 
-依使用者提供的桌機與手機版型製作。專案保存於 `網站` 資料夾；GitHub 預定儲存庫 `yoyoboxps/classroom-studio`。深色工作室保留既有 Google 登入、班級管理、點數交易及 Netlify Functions。
+依使用者提供的桌機與手機版型製作。專案保存於 `網站` 資料夾；GitHub 儲存庫 `yoyoboxps/classroom-studio`。深色工作室保留既有 Google 登入、班級管理、點數交易及 Netlify Functions。
 
 ## 本次設計
 
