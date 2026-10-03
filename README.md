@@ -107,3 +107,6 @@ where id = (select id from auth.users where email = 'YOUR_TEACHER_EMAIL');
 既有專案請在 SQL Editor 執行 `supabase/migrations/20261003_link_enrollment.sql`。此 migration 不變更既有角色或額度；既有班級保持關閉自助加入，需由老師開啟 `self_enrollment` 並設定 `max_students`。新建班級預設開放。班級連結為 `https://你的網站/?class=班級UUID`。已套用至「歡喜人數」，上限15人。任何取得連結的已驗證 Google 帳號均可加入，老師可暫停班級停止加入與生成。沒有學生名單也能開課。
 
 驗證記錄（2026-10-03）：正式建置成功，14 項資料庫測試通過；正式資料庫以交易回復方式驗證首次加入100點與重複加入不增加分配，測試後學生與已分配點數皆為0。實際學生 Google 首次登入仍待開課試用。
+
+### 固定網址與課程代號（2026-10-03）
+既有專案另執行 `supabase/migrations/20261003_course_codes.sql`。班級代號自動產生8碼且唯一，老師後台會顯示。學生在固定首頁輸入6至8碼代號，確認課程後按 Google 登入；OAuth 往返以 sessionStorage 保留選定班級。首頁不再列出所有開放班級或自動加入唯一班級。已加入的學生可直接登入回到既有班級；舊班級連結仍相容。老師可登入後台複製「固定網址＋代號」。歡喜人數使用 JOY015。代號是課程入口，不是密碼；持有代號的已驗證 Google 帳號可在名額與點數足夠時加入。公開查詢僅回傳開放課程 ID 與名稱，班級名額與點數仍由交易式 join_class 檢查。

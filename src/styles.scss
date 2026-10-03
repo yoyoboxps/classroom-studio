@@ -266,3 +266,8 @@ html::-webkit-scrollbar {width:0;}
  .usage-legend {font-size:14px;}
  .generate-button {min-height:45px;font-size:20px;}
 }
+.course-entry { max-width: 430px; margin: 24px auto; text-align: left; label { display: block; margin-bottom: 10px; font-size: .9rem; } .join-field { input { flex: 1; width: 0; background: transparent; color: inherit; font-size: 1rem; letter-spacing: .12em; text-transform: uppercase; } button { white-space: nowrap; } } }
+.course-confirm { margin: 24px auto; h3 { margin-bottom: 16px; } }
+.teacher-login { background: transparent; border: 0; color: #a9b2b7; text-decoration: underline; cursor: pointer; margin-top: 24px; font-size: .8rem; }
+.course-entry .course-error { margin: 12px 0 0; color: #ffad8a; font-size: .85rem; }
+.class-settings .course-code-display { font-size: 1rem; strong { color: #ff8b39; letter-spacing: .12em; } }
