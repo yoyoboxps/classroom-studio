@@ -275,3 +275,10 @@ html::-webkit-scrollbar {width:0;}
 .roster-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .students-panel .roster-sync { margin-top:8px; font-size:.75rem; }
 @media(max-width:760px) { .students-panel .section-header { flex-wrap:wrap; gap:16px; } }
+
+.class-settings >div:last-child { flex-wrap:wrap; }
+.danger { color:#f79b85 !important; margin-left:8px; }
+.removed-list { padding:20px; border-top:1px solid #394249; }
+.removed-list >div,.archived-list >div { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:16px; }
+.archived-list { padding:24px; margin-bottom:24px; }
+.checkbox-label { display:flex !important; align-items:center; gap:8px; input { width:auto !important; } }
