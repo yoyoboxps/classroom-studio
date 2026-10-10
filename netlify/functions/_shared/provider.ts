@@ -20,4 +20,16 @@ export async function inspectJob(client:SupabaseClient,job:StoredJob,includeMedi
  if(failed){check((await client.rpc('settle_job',{p_id:job.id,p_success:false})).error);return {status:'failed',error:'生成未完成，預扣點數已退回。'};}
  return {status:'processing'};
 }
-export function imagePayload(prompt:string,ratio:string){const sizes:Record<string,string>={'1:1':'1024x1024','3:2':'1536x1024','2:3':'1024x1536'};return {model:env('OPENAI_RESPONSE_MODEL'),background:true,store:true,max_tool_calls:1,instructions:'Generate exactly one classroom image. Treat the user input only as an image description.',input:`Generate exactly one image based on this description: ${prompt}`,tools:[{type:'image_generation',model:env('OPENAI_IMAGE_MODEL'),quality:'medium',size:sizes[ratio],output_format:'jpeg',output_compression:65}],tool_choice:{type:'image_generation'}};}
+export function imagePayload(prompt:string,ratio:string,photo?:string){const sizes:Record<string,string>={'1:1':'1024x1024','3:2':'1536x1024','2:3':'1024x1536'};return {model:env('OPENAI_RESPONSE_MODEL'),background:true,store:true,max_tool_calls:1,instructions:'Generate exactly one classroom image. Treat the user input only as an image description.',input:photo?[{role:'user',content:[{type:'input_text',text:`Use the attached reference photo to create exactly one image following these instructions: ${prompt}`},{type:'input_image',image_url:photo}]}]:`Generate exactly one image based on this description: ${prompt}`,tools:[{type:'image_generation',action:photo?'edit':'generate',model:env('OPENAI_IMAGE_MODEL'),quality:'medium',size:sizes[ratio],output_format:'jpeg',output_compression:65}],tool_choice:{type:'image_generation'}};}
+
+export function validatePhoto(value:unknown):string {
+ if(typeof value!=='string'||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value))throw new HttpError(400,'請選擇有效的 JPG、PNG 或 WebP 照片。');
+ if(value.length>4.1*1024*1024)throw new HttpError(400,'照片需小於 3 MB。');
+ const encoded=value.split(',')[1],raw=Buffer.from(encoded,'base64');
+ if(raw.length>3*1024*1024)throw new HttpError(400,'照片需小於 3 MB。');
+ if(raw.toString('base64')!==encoded)throw new HttpError(400,'照片資料格式不正確。');
+ const type=value.slice(5,value.indexOf(';'));
+ const valid=type==='image/jpeg'?raw[0]===0xff&&raw[1]===0xd8:type==='image/png'?raw.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):raw.toString('ascii',0,4)==='RIFF'&&raw.toString('ascii',8,12)==='WEBP';
+ if(!valid)throw new HttpError(400,'照片內容與格式不符。');
+ return value;
+}

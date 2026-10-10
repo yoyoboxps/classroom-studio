@@ -282,3 +282,6 @@ html::-webkit-scrollbar {width:0;}
 .removed-list >div,.archived-list >div { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:16px; }
 .archived-list { padding:24px; margin-bottom:24px; }
 .checkbox-label { display:flex !important; align-items:center; gap:8px; input { width:auto !important; } }
+
+.reference-photo-note {color:#b7c2c8;font-size:13px;line-height:1.7;margin:-8px 0 18px;}
+.reference-upload {padding:14px;border:1px solid #454d52;border-radius:6px;background:#ffffff03;}

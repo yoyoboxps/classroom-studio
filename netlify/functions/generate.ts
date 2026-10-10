@@ -1,13 +1,13 @@
 import type { Config } from '@netlify/functions';
 import { authenticate,body,check,env,failure,HttpError,json,requirePost,uuid } from './_shared/core';
-import { imagePayload,providerRequest } from './_shared/provider';
+import { imagePayload,providerRequest,validatePhoto } from './_shared/provider';
 export default async(req:Request)=>{let reservedId:string|undefined;let client:ReturnType<typeof import('./_shared/core').db>|undefined;try{
  requirePost(req);const auth=await authenticate(req);client=auth.client;const b=await body(req,4.3*1024*1024);
  const classId=uuid(b.classId),id=uuid(b.requestId);
  if(!['image','video'].includes(b.kind)||typeof b.prompt!=='string'||!b.prompt.trim()||b.prompt.length>2000)throw new HttpError(400,'請填寫 1–2,000 字的創作描述。');
  if(b.kind==='image'&&!['1:1','3:2','2:3'].includes(b.ratio))throw new HttpError(400,'圖片比例不正確。');
- if(b.kind==='video'){if(typeof b.image!=='string'||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(b.image)||b.image.length>4.1*1024*1024)throw new HttpError(400,'請選擇有效圖片，檔案需小於 3 MB。');const raw=Buffer.from(b.image.split(',')[1],'base64');const type=b.image.slice(5,b.image.indexOf(';'));const valid=type==='image/jpeg'?raw[0]===0xff&&raw[1]===0xd8:type==='image/png'?raw.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):raw.toString('ascii',0,4)==='RIFF'&&raw.toString('ascii',8,12)==='WEBP';if(!valid)throw new HttpError(400,'照片內容與格式不符。');}
- const key=env(b.kind==='image'?'OPENAI_API_KEY':'XAI_API_KEY');const payload=b.kind==='image'?imagePayload(b.prompt.trim(),b.ratio):{model:env('XAI_VIDEO_MODEL'),prompt:b.prompt.trim(),image:{url:b.image},duration:6,resolution:'720p'};
+ const photo=b.kind==='video'||b.image!==undefined?validatePhoto(b.image):undefined;
+ const key=env(b.kind==='image'?'OPENAI_API_KEY':'XAI_API_KEY');const payload=b.kind==='image'?imagePayload(b.prompt.trim(),b.ratio,photo):{model:env('XAI_VIDEO_MODEL'),prompt:b.prompt.trim(),image:{url:b.image},duration:6,resolution:'720p'};
  const {data:job,error}=await client.rpc('reserve_job',{p_user:auth.user.id,p_class:classId,p_id:id,p_kind:b.kind});check(error);
  if(job.existing)return json({id,status:job.status});reservedId=id;
  const response=await providerRequest(b.kind==='image'?'https://api.openai.com/v1/responses':'https://api.x.ai/v1/videos/generations',key,{method:'POST',body:JSON.stringify(payload)});
