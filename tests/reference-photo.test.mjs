@@ -14,6 +14,10 @@ test('reference photo reaches the image provider alongside the user instructions
  assert.equal(payload.input[0].content[1].image_url,jpeg);
  assert.match(payload.input[0].content[0].text,/Keep the subject/);
  assert.equal(payload.tools[0].action,'edit');
+ assert.equal(payload.input[0].content[1].detail,'high');
+ assert.match(payload.instructions,/photo is the source image/);
+ assert.match(payload.instructions,/preserve the original subject/);
+ assert.doesNotMatch(payload.instructions,/only as an image description/);
  assert.equal(payload.tools[0].size,'1536x1024');
  assert.equal(payload.background,true);
 });
