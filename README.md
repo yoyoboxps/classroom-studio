@@ -52,7 +52,7 @@ npm test
 2. 在 Supabase Authentication 啟用 Google，並在 Google Cloud 建立 OAuth client；設定 Supabase callback URL。
 3. 將 Netlify 網址設為 Supabase Site URL，加入正式及需使用的預覽 Redirect URLs；OAuth 不接受未設定的來源。
 4. 在 Netlify 環境變數填入 `.env.example` 對應值。瀏覽器可公開的只有 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY`。Service role、OpenAI、xAI 金鑰只能供 Functions 使用。
-5. 為供應商設定有權使用的模型 ID；範例預填 `gpt-5` + `gpt-image-2`、`grok-imagine-video-1.5`，正式上線前請在你的帳戶驗證模型權限與成本。文字模型和圖片工具都會產生成本。
+5. 為供應商設定有權使用的模型 ID；範例預填 `gpt-5` + `gpt-image-2.5-sunburst`、`grok-imagine-video-1.5`，正式上線前請在你的帳戶驗證模型權限與成本。文字模型和圖片工具都會產生成本。
 6. 用管理者 Google 帳號登入一次。到 Supabase SQL Editor 用以下語句指定老師；學生不能在網站自行修改角色：
 
 ```sql
@@ -122,3 +122,7 @@ where id = (select id from auth.users where email = 'YOUR_TEACHER_EMAIL');
 ### 參考照片生成圖片
 
 圖片分頁可選填一張 JPG、PNG 或 WebP 照片（最大 3 MB），預覽後輸入希望保留與修改的內容。前端將照片及描述一起提交；後端先驗證格式與大小，再以 Responses API 的 `input_image` 與圖片工具 `action: edit` 執行。未上傳照片時沿用文字生成。扣點沿用班級的圖片扣點設定，資料庫不保存照片或提示詞；照片會送至 OpenAI 處理。
+
+### 圖片模型切換（2026-10-10）
+
+圖片工具模型選用 `gpt-image-2.5-sunburst`，保留中等品質與照片改圖模式。正式環境須將 Netlify 的 `OPENAI_IMAGE_MODEL` 設為此值，並重新部署；修改此範例檔不會自動變更正式環境。API 權限與實際生成費用需在 OpenAI 帳戶確認。
