@@ -399,3 +399,16 @@ html::-webkit-scrollbar {width:0;}
 .new-class-button { margin-left: auto; white-space: nowrap; }
 .class-gift-summary { display: grid; gap: 8px; padding: 16px; margin: 0 0 20px; border: 1px solid #394147; border-radius: 10px; background: #20272c; color: #e7ecef; font-size: .875rem; small { color: #b8c0c6; line-height: 1.6; } .budget-warning { color: #ffc38b; } }
 @media(max-width:760px) { .class-strip:has(.new-class-button) { flex-wrap: wrap; } .new-class-button { width: 100%; justify-content: center; } }
+
+.student-pagination { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px; color:#b8c0c6; font-size:.875rem; >div { display:flex; align-items:center; gap:16px; } button:disabled { opacity:.4; cursor:default; } }
+.class-management { margin:28px 0; >.section-header { padding:0 0 20px; h2 { color:#f1f3f4; } p { color:#aab2b8; } } }
+.class-list { display:grid; gap:16px; }
+.class-card { overflow:hidden; background:#1d2429; border-color:#394147; }
+.class-card-header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px; }
+.class-expand { display:flex; gap:14px; align-items:center; text-align:left; border:0; background:transparent; color:#eef1f4; padding:0; flex:1; h3 { margin:0 0 8px; font-size:1.1rem; } p { margin:5px 0; color:#b8c0c6; font-size:.825rem; line-height:1.5; } >svg { flex-shrink:0; transition:transform .2s; } &[aria-expanded='true'] >svg { transform:rotate(180deg); } }
+.class-card-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; max-width:480px; }
+.class-card-content { padding:22px; border-top:1px solid #394147; .admin-stats { margin-bottom:20px; } .students-panel { margin:0; } }
+@media(max-width:760px) { .student-pagination { flex-direction:column; align-items:flex-start; } .class-card-header { flex-direction:column; align-items:stretch; padding:18px; } .class-card-actions { max-width:none; justify-content:flex-start; } .class-card-content { padding:14px; } .class-management >.section-header { align-items:flex-start; } }
+
+.class-card-content .table-wrap table { th { background:#262d32; color:#b8c0c6; border-color:#394147; } td { color:#e7ecef; border-color:#394147; } }
+.class-card-content { .student-cell small, .stat-card p, .stat-card div>span, .stat-card strong small { color:#b8c0c6; } .text-button { color:#9ed1ff; margin-right:14px; } .text-button.danger { color:#ffb8a8; } }
