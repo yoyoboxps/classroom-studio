@@ -40,8 +40,10 @@ export function validatePhoto(value:unknown):string {
  return value;
 }
 
-export function videoPayload(prompt:string,photo:string,options:{duration?:unknown;resolution?:unknown;audio?:unknown}) {
+export function videoPayload(prompt:string,photo:string|undefined,options:{duration?:unknown;resolution?:unknown;audio?:unknown;ratio?:unknown}) {
  const duration=options.duration??6,resolution=options.resolution??'480p',audio=options.audio??true;
  if(![6,10,15].includes(duration as number)||!['480p','720p'].includes(resolution as string)||typeof audio!=='boolean')throw new HttpError(400,'影片設定不正確，請重新選擇。');
- return {model:env('XAI_VIDEO_MODEL'),prompt,image:{url:validatePhoto(photo)},duration,resolution,generate_audio:audio};
+ const ratio=options.ratio??'2:3';
+ if(photo===undefined&&!['1:1','2:3','3:2','9:16','16:9'].includes(ratio as string))throw new HttpError(400,'影片比例不正確。');
+ return {model:env('XAI_VIDEO_MODEL'),prompt,...(photo!==undefined?{image:{url:validatePhoto(photo)}}:{aspect_ratio:ratio}),duration,resolution,generate_audio:audio};
 }

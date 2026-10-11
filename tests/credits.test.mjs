@@ -22,4 +22,17 @@ test('all allocations are guaranteed, extra students and quota raises cannot exc
 test('quota cannot be reduced beneath a reservation; paused and expired classes refuse jobs',async()=>{const f=await fixture(),id=randomUUID();await reserve(f,id,'video');await assert.rejects(()=>pg.query('select set_quota($1,$2,$3)',[f.c,f.m.id,10]),/額度不可低於/);await settle(id,false);await pg.query('update classes set active=false where id=$1',[f.c]);await assert.rejects(()=>reserve(f,randomUUID()),/暫停或到期/);await pg.query("update classes set active=true,expires_at=now()-interval '1 day' where id=$1",[f.c]);await assert.rejects(()=>reserve(f,randomUUID()),/暫停或到期/);});
 test('student role cannot mutate quotas, roles or invoke billing functions',async()=>{const f=await fixture();await pg.exec('set role authenticated');try{await assert.rejects(()=>pg.query('update profiles set role=$1 where id=$2',['admin',f.u]),/permission denied/);await assert.rejects(()=>reserve(f,randomUUID()),/permission denied/);await assert.rejects(()=>pg.query('update class_members set quota=99999 where id=$1',[f.m.id]),/permission denied/);}finally{await pg.exec('reset role');}});
 test('cross-class simultaneous requests share the same account-wide active limit',async()=>{const f=await fixture();const c=randomUUID();await pg.query("insert into classes(id,name,total,default_quota,image_cost,video_cost,expires_at) values($1,'second',100,50,5,20,now()+interval '1 day')",[c]);await pg.query('select invite_students($1,$2::text[])',[c,[`${f.u}@example.com`]]);await pg.query('select claim_memberships($1,$2,$3)',[f.u,`${f.u}@example.com`,'Test']);const results=await Promise.allSettled([reserve(f,randomUUID()),reserve({...f,c},randomUUID())]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected').length,1);});
+test('dynamic video cost is reserved and refunded exactly once; client roles cannot supply costs',async()=>{
+ const f=await fixture(500,300),id=randomUUID();
+ const r=()=>pg.query('select reserve_job($1,$2,$3,$4,$5) result',[f.u,f.c,id,'video',100]);
+ assert.equal((await r()).rows[0].result.cost,100);assert.equal((await r()).rows[0].result.existing,true);
+ assert.deepEqual((await pg.query('select used,reserved from class_members where id=$1',[f.m.id])).rows[0],{used:0,reserved:100});
+ await settle(id,false);await settle(id,false);assert.equal((await pg.query('select reserved from class_members where id=$1',[f.m.id])).rows[0].reserved,0);
+ await assert.rejects(()=>pg.query('select reserve_job($1,$2,$3,$4,$5)',[f.u,f.c,randomUUID(),'video',1]),/扣點設定/);
+ await pg.exec('set role authenticated');try{await assert.rejects(r,/permission denied/);}finally{await pg.exec('reset role');}
+});
+test('dynamic cost cannot exceed quota and succeeds with the full selected cost',async()=>{
+ const f=await fixture(100,50);await assert.rejects(()=>pg.query('select reserve_job($1,$2,$3,$4,$5)',[f.u,f.c,randomUUID(),'video',60]),/不足/);
+ const id=randomUUID();await pg.query('select reserve_job($1,$2,$3,$4,$5)',[f.u,f.c,id,'video',40]);await settle(id,true);assert.deepEqual((await pg.query('select used,reserved from class_members where id=$1',[f.m.id])).rows[0],{used:40,reserved:0});
+});
 test.after(async()=>{await pg.close();});

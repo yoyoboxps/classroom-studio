@@ -1,3 +1,4 @@
+import { generationCost } from '../../src/pricing';
 import type { Config } from '@netlify/functions';
 import { authenticate,body,check,env,failure,HttpError,json,requirePost,uuid } from './_shared/core';
 import { imagePayload,videoPayload,providerRequest,validatePhoto } from './_shared/provider';
@@ -6,9 +7,9 @@ export default async(req:Request)=>{let reservedId:string|undefined;let client:R
  const classId=uuid(b.classId),id=uuid(b.requestId);
  if(!['image','video'].includes(b.kind)||typeof b.prompt!=='string'||!b.prompt.trim()||b.prompt.length>2000)throw new HttpError(400,'請填寫 1–2,000 字的創作描述。');
  if(b.kind==='image'&&!['1:1','3:2','2:3'].includes(b.ratio))throw new HttpError(400,'圖片比例不正確。');
- const photo=b.kind==='video'||b.image!==undefined?validatePhoto(b.image):undefined;
- const key=env(b.kind==='image'?'OPENAI_API_KEY':'XAI_API_KEY');const payload=b.kind==='image'?imagePayload(b.prompt.trim(),b.ratio,photo):videoPayload(b.prompt.trim(),photo!,{duration:b.duration,resolution:b.resolution,audio:b.audio});
- const {data:job,error}=await client.rpc('reserve_job',{p_user:auth.user.id,p_class:classId,p_id:id,p_kind:b.kind});check(error);
+ const photo=b.image!==undefined?validatePhoto(b.image):undefined;
+ const key=env(b.kind==='image'?'OPENAI_API_KEY':'XAI_API_KEY');const payload=b.kind==='image'?imagePayload(b.prompt.trim(),b.ratio,photo):videoPayload(b.prompt.trim(),photo,{duration:b.duration,resolution:b.resolution,audio:b.audio,ratio:b.videoRatio});
+ const {data:job,error}=await client.rpc('reserve_job',{p_user:auth.user.id,p_class:classId,p_id:id,p_kind:b.kind,p_cost:generationCost(b.kind,b.duration,b.resolution)});check(error);
  if(job.existing)return json({id,status:job.status});reservedId=id;
  const response=await providerRequest(b.kind==='image'?'https://api.openai.com/v1/responses':'https://api.x.ai/v1/videos/generations',key,{method:'POST',body:JSON.stringify(payload)});
  if(!response.ok){if(response.status>=400&&response.status<500&&response.status!==408){check((await client.rpc('settle_job',{p_id:id,p_success:false})).error);reservedId=undefined;throw new HttpError(502,'模型拒絕此請求，預扣點數已退回。請修改描述或聯絡老師。');}throw new HttpError(502,'模型連線狀態不確定，已保留點數，請聯絡老師確認。');}

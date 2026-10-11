@@ -21,3 +21,8 @@ test('invalid settings and missing source photo are rejected before provider sub
  for(const options of [{duration:30},{duration:'6'},{resolution:'1080p'},{audio:'false'}])assert.throws(()=>exports.videoPayload('Motion',photo,options),e=>e.status===400);
  assert.throws(()=>exports.videoPayload('Motion','',{}),e=>e.status===400);
 });
+
+test('text-to-video omits image and sends the selected ratio',()=>{
+ for(const ratio of ['1:1','2:3','3:2','9:16','16:9']){const p=exports.videoPayload('Create an ocean scene',undefined,{ratio,duration:10,resolution:'720p',audio:false});assert.equal(p.image,undefined);assert.equal(p.aspect_ratio,ratio);assert.equal(p.generate_audio,false);}
+ assert.throws(()=>exports.videoPayload('Scene',undefined,{ratio:'invalid'}),e=>e.status===400);
+});
