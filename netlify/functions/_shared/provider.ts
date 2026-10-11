@@ -39,3 +39,9 @@ export function validatePhoto(value:unknown):string {
  if(!valid)throw new HttpError(400,'照片內容與格式不符。');
  return value;
 }
+
+export function videoPayload(prompt:string,photo:string,options:{duration?:unknown;resolution?:unknown;audio?:unknown}) {
+ const duration=options.duration??6,resolution=options.resolution??'480p',audio=options.audio??true;
+ if(![6,10,15].includes(duration as number)||!['480p','720p'].includes(resolution as string)||typeof audio!=='boolean')throw new HttpError(400,'影片設定不正確，請重新選擇。');
+ return {model:env('XAI_VIDEO_MODEL'),prompt,image:{url:validatePhoto(photo)},duration,resolution,generate_audio:audio};
+}

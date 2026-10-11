@@ -3,7 +3,7 @@ import { ArrowUpRight, Bell, BookOpen, Check, ChevronDown, ChevronRight, CircleH
 import type { Classroom, Dashboard, Job, Member } from './types';
 import { api, supabase } from './api';
 import { loadDemo, demoData } from './demo';
-import { preparePhoto } from './photo';
+import { preparePhoto, prepareVideoPhoto } from './photo';
 
 type View = 'studio' | 'history' | 'guide' | 'admin';
 const inspirations = [ { name:'自然寫實', prompt:'一隻小狐狸坐在清晨的森林裡，柔和陽光穿過樹葉，自然攝影，細緻毛髮。', icon:'🌿' }, { name:'故事插畫', prompt:'一座漂浮在雲上的小小書店，溫暖燈光、奇幻故事插畫、豐富細節。', icon:'📚' }, { name:'產品設計', prompt:'一盞以海浪為靈感的桌燈，簡約產品攝影、淺色背景、柔和陰影。', icon:'💡' } ];
@@ -17,6 +17,10 @@ export default function App() {
  const [classId,setClassId] = useState(new URLSearchParams(window.location.search).get('class') || sessionStorage.getItem('classroom-pending-class') || '');
  const [prompt,setPrompt] = useState('');
  const ratio = '3:2';
+ const [videoResolution,setVideoResolution]=useState('480p');
+ const [videoDuration,setVideoDuration]=useState(6);
+ const [videoAudio,setVideoAudio]=useState(true);
+ const [videoRatio,setVideoRatio]=useState('2:3');
  const [photo,setPhoto] = useState<string>('');
  const [photoName,setPhotoName] = useState('');
  const [preparingPhoto,setPreparingPhoto] = useState(false);
@@ -87,7 +91,7 @@ export default function App() {
  async function poll(id:string){try{const response=await api<{status:Job['status'];url?:string;error?:string}>(`jobs?id=${id}`);if(!alive.current)return;if(response.status==='processing'){pollTimer.current=setTimeout(()=>void poll(id),5000);return;}setBusy(false);activeJob.current=null;if(response.url)setResult({kind,url:response.url});else setNotice(response.error || (response.status==='review'?'任務狀態需要老師確認，暫時保留預扣點數。':'生成未完成，點數已退回。'));void refresh();}catch{if(alive.current){setNotice('正在重新確認生成狀態，請保持頁面開啟。');pollTimer.current=setTimeout(()=>void poll(id),10000);}}}
  async function generate(){if(preparingPhoto)return;if(supabase&&!session){setModal('login');return;}if(!current){setNotice('請先加入班級。');return;}if(!prompt.trim()){setNotice('請先描述你想創作的內容。');return;}if(kind==='video'&&!photo){setNotice('請先選擇一張照片。');return;}if(left<cost){setNotice('剩餘點數不足，請聯絡老師調整額度。');return;}if(!current.active || new Date(current.expires_at).getTime()<Date.now()){setNotice('班級已暫停或課程已到期。');return;}setBusy(true);setResult(null);
  if(!supabase){await new Promise(r=>setTimeout(r,1200));setBusy(false);setNotice('示範已完成操作檢查；接上模型 API 後才會生成作品與扣點。');return;}
- try{const response=await api<{id:string;url?:string;status:Job['status']}>('generate',{classId:current.id,kind,prompt:prompt.trim(),ratio,image:photo||undefined,requestId:crypto.randomUUID()});if(response.url){setResult({kind,url:response.url});setBusy(false);}else if(response.status==='processing'){activeJob.current=response.id;void poll(response.id);}else{setBusy(false);setNotice('任務待確認，請查看使用紀錄或聯絡老師。');}void refresh();}catch(e){setBusy(false);setNotice((e as Error).message);void refresh();}}
+ try{const source=kind==='video'?await prepareVideoPhoto(photo,videoRatio):photo;const response=await api<{id:string;url?:string;status:Job['status']}>('generate',{classId:current.id,kind,prompt:prompt.trim(),ratio,image:source||undefined,...(kind==='video'?{duration:videoDuration,resolution:videoResolution,audio:videoAudio}:{}),requestId:crypto.randomUUID()});if(response.url){setResult({kind,url:response.url});setBusy(false);}else if(response.status==='processing'){activeJob.current=response.id;void poll(response.id);}else{setBusy(false);setNotice('任務待確認，請查看使用紀錄或聯絡老師。');}void refresh();}catch(e){setBusy(false);setNotice((e as Error).message);void refresh();}}
  async function download(){if(!result)return;try{const response=await fetch(result.url);if(!response.ok)throw new Error();const blob=await response.blob();const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`classroom-${Date.now()}.${result.kind==='image'?'jpg':'mp4'}`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}catch{window.open(result.url,'_blank','noopener,noreferrer');setNotice('作品已開啟，請使用瀏覽器另存檔案。');}}
  async function formAction(e:FormEvent<HTMLFormElement>){e.preventDefault();if(saving)return;setSaving(true);const f=new FormData(e.currentTarget);try{
  if(modal==='class'){const input={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),total:Number(f.get('total')),default_quota:Number(f.get('quota')),max_students:Number(f.get('capacity')),self_enrollment:true,image_cost:Number(f.get('imageCost')),video_cost:Number(f.get('videoCost')),expires_at:String(f.get('expires'))};if(input.default_quota>input.total)throw new Error('每人額度不可超過班級總點數。');if(supabase)await api('admin',{action:'create',...input});else{const c:Classroom={...input,id:crypto.randomUUID(),used:0,reserved:0,allocated:0,students:0,active:true};setData(d=>({...d,classes:[...d.classes,c]}));setClassId(c.id);}setNotice('班級已建立。');}
@@ -135,12 +139,18 @@ export default function App() {
    {view==='studio'&&current&&<div className="reference-studio">
     <section className="artwork" aria-label="本次作品預覽">
      {result&&<div className="artwork-toolbar"><button className="download-button" onClick={()=>void download()}><Download size={21}/>下載{result.kind==='image'?'圖片':'影片'}</button></div>}
-     <div className={`artwork-frame ${result?'has-result':''} ${photo?'has-photo':''}`} aria-busy={busy}>{result?(result.kind==='image'?<img src={result.url} alt="本次 AI 生成圖片"/>:<video src={result.url} controls playsInline/>):photo?<img src={photo} alt="本次創作的參考照片"/>:<div className="artwork-placeholder"><ImagePlus size={42} strokeWidth={1.25}/><span>圖片預覽</span></div>} {busy&&<div className="artwork-loading" role="status"><LoaderCircle className="spin" size={30}/>正在創作中，請保持頁面開啟</div>}</div>
+     <div style={kind==='video'&&!result?{aspectRatio:videoRatio.replace(':',' / ')}:undefined} className={`artwork-frame ${kind==='video'?'video-preview':''} ${result?'has-result':''} ${photo?'has-photo':''}`} aria-busy={busy}>{result?(result.kind==='image'?<img src={result.url} alt="本次 AI 生成圖片"/>:<video src={result.url} controls playsInline/>):photo?<img src={photo} alt="本次創作的參考照片"/>:<div className="artwork-placeholder"><ImagePlus size={42} strokeWidth={1.25}/><span>圖片預覽</span></div>} {busy&&<div className="artwork-loading" role="status"><LoaderCircle className="spin" size={30}/>正在創作中，請保持頁面開啟</div>}</div>
     </section>
     <section className="studio-controls" aria-label="生成設定">
      {<div className="reference-upload"><label htmlFor="source-photo">{kind==='image'?'參考照片（選填）':'上傳照片'}</label><input id="source-photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" disabled={busy||preparingPhoto} ref={fileRef} onChange={e=>void upload(e.target.files?.[0])}/><span>{photoName||'HEIC、JPG、PNG、WebP，最大 20 MB'}</span>{preparingPhoto&&<span className="photo-processing" role="status"><LoaderCircle className="spin" size={16}/>正在處理照片…</span>}{photo&&<button className="secondary" disabled={busy||preparingPhoto} onClick={()=>{setPhoto('');setPhotoName('');setResult(null);if(fileRef.current)fileRef.current.value='';}}>移除照片</button>}</div>}
      <div className="description-row"><label htmlFor="prompt">{kind==='image'?'畫面描述':'動作描述'}</label><textarea id="prompt" value={prompt} maxLength={2000} disabled={busy||preparingPhoto} onChange={e=>setPrompt(e.target.value)} rows={1} placeholder={kind==='image'?photo?'例如：保留照片中的人物，改成水彩插畫，背景換成森林。':'描述你想創作的畫面':'例如：鏡頭緩慢靠近，水母輕輕游動。'}/></div>
-     {kind==='video'&&<div className="video-length"><span>影片長度</span><strong>6 秒</strong></div>}
+     {kind==='video'&&<div className="video-options">
+      <fieldset disabled={busy||preparingPhoto}><legend>解析度</legend><div className="video-segments">{['480p','720p'].map(r=><button type="button" key={r} aria-pressed={videoResolution===r} onClick={()=>setVideoResolution(r)}>{r}</button>)}</div></fieldset>
+      <fieldset disabled={busy||preparingPhoto}><legend>影片長度</legend><div className="video-segments">{[6,10,15].map(d=><button type="button" key={d} aria-pressed={videoDuration===d} onClick={()=>setVideoDuration(d)}>{d} 秒</button>)}</div></fieldset>
+      <label>聲音<select value={videoAudio?'on':'off'} disabled={busy||preparingPhoto} onChange={e=>setVideoAudio(e.target.value==='on')}><option value="on">開啟聲音</option><option value="off">無聲影片</option></select></label>
+      <label>畫面比例<select value={videoRatio} disabled={busy||preparingPhoto} onChange={e=>setVideoRatio(e.target.value)}>{['2:3','3:2','9:16','16:9','1:1'].map(r=><option key={r} value={r}>{r}</option>)}</select></label>
+      <p>照片會依預覽範圍置中裁切後生成影片。</p>
+     </div>}
      <div className="usage-action"><div className="reference-usage"><div className="usage-heading"><strong>個人 AI 用量</strong><span>已用 {me?.used||0} / 上限 {me?.quota||0} 點</span></div><div className="usage-meter" role="meter" aria-label="個人已使用點數" aria-valuemin={0} aria-valuemax={me?.quota||100} aria-valuenow={me?.used||0}><span className="meter-used" style={{width:`${me?.quota?Math.min(100,me.used/me.quota*100):0}%`}}/><span className="meter-estimate" style={{width:`${me?.quota?Math.min(Math.max(0,me.quota-me.used),cost+me.reserved)/me.quota*100:0}%`}}/></div><div className="usage-legend"><span><i/>已使用 {me?.used||0} 點</span><span><i/>本次預估 {cost} 點</span></div></div><button className="generate-button" disabled={busy||preparingPhoto||!me||left<cost||!current.active} onClick={()=>void generate()}>{busy?<><LoaderCircle className="spin" size={22}/>正在創作中…</>:`生成${kind==='image'?'圖片':'影片'} · ${cost} 點`}</button></div>
      {!supabase&&<p className="reference-demo">示範模式：生成僅檢查操作流程，不呼叫模型、不扣點。</p>}
      {!me&&<p role="status">此帳號尚未有學生額度。老師可用學生帳號開啟班級連結測試加入。</p>}

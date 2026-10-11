@@ -78,3 +78,26 @@ export async function preparePhoto(file: File): Promise<string> {
     reader.readAsDataURL(output);
   });
 }
+
+export async function prepareVideoPhoto(source:string,ratio:string):Promise<string> {
+  const [width,height]=ratio.split(':').map(Number);
+  const image=await loadImage(await (await fetch(source)).blob());
+  const target=width/height;
+  const cropWidth=Math.min(image.naturalWidth,image.naturalHeight*target);
+  const cropHeight=cropWidth/target;
+  const scale=Math.min(1,2048/Math.max(cropWidth,cropHeight));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(cropWidth*scale));
+  canvas.height=Math.max(1,Math.round(cropHeight*scale));
+  try {
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('照片裁切失敗，請重新選擇照片。');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(image,(image.naturalWidth-cropWidth)/2,(image.naturalHeight-cropHeight)/2,cropWidth,cropHeight,0,0,canvas.width,canvas.height);
+    for(const quality of [0.9,0.75,0.6]){
+      const output=canvas.toDataURL('image/jpeg',quality);
+      if(output.length<=4*MAX_OUTPUT_BYTES/3+32)return output;
+    }
+    throw new Error('照片太大，請選擇另一張照片。');
+  } finally {canvas.width=canvas.height=1;}
+}
