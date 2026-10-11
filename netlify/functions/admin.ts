@@ -9,6 +9,7 @@ export default async(req:Request)=>{try{requirePost(req);const {client,isAdmin}=
  case 'deleteClass':check((await client.rpc('delete_class',{p_class:uuid(b.classId)})).error);break;
  case 'restoreClass':check((await client.from('classes').update({deleted_at:null,active:false}).eq('id',uuid(b.classId)).not('deleted_at','is',null)).error);break;
  case 'invite':{if(!Array.isArray(b.emails)||b.emails.length>200||b.emails.some((v:unknown)=>typeof v!=='string'||!/^\S+@\S+\.\S+$/.test(v)||v.length>254))throw new HttpError(400,'每次最多匯入 200 個有效 Email。');check((await client.rpc('invite_students',{p_class:uuid(b.classId),p_emails:b.emails})).error);break;}
+ case 'topup':check((await client.rpc('top_up_credits',{p_class:uuid(b.classId),p_member:uuid(b.memberId),p_id:uuid(b.requestId),p_paid:integer(b.purchased,1,100000),p_bonus:integer(b.bonus,0,100000)})).error);break;
  case 'quota':check((await client.rpc('set_quota',{p_class:uuid(b.classId),p_member:uuid(b.memberId),p_quota:integer(b.quota,0)})).error);break;
  case 'toggle':if(typeof b.active!=='boolean')throw new HttpError(400,'狀態不正確。');check((await client.from('classes').update({active:b.active}).eq('id',uuid(b.classId)).is('deleted_at',null)).error);break;
  case 'resolve':{const {data:job,error}=await client.from('generation_jobs').select('status').eq('id',uuid(b.jobId)).single();check(error);if(job?.status!=='review'||!['success','refund'].includes(b.resolution))throw new HttpError(400,'此任務無法手動結算。');check((await client.rpc('settle_job',{p_id:b.jobId,p_success:b.resolution==='success'})).error);break;}
