@@ -385,3 +385,13 @@ html::-webkit-scrollbar {width:0;}
 .join-course-details { margin-top:16px; color:var(--muted); }
 .join-course-details summary { cursor:pointer; font-size:14px; }
 .join-course-details .course-entry { margin-top:16px; }
+.all-students {
+ .table-wrap table {
+  th { background:#262d32; color:#b8c0c6; border-color:#394147; }
+  td { color:#e7ecef; border-color:#394147; }
+ }
+ .student-cell small, .wallet-reserved { color:#aab2b8; }
+ .text-button { color:#9ed1ff; margin-right:16px; white-space:nowrap; }
+ .text-button:last-child { margin-right:0; }
+}
+.join-course-details { color:#aab2b8; }
