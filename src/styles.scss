@@ -339,3 +339,35 @@ html::-webkit-scrollbar {width:0;}
 .video-options p {grid-column:1/-1;margin:0;color:#aeb9bf;font-size:12px;}
 .video-options button:disabled {cursor:wait;opacity:.5;}
 @media(max-width:400px){.video-options {grid-template-columns:1fr;}}
+
+/* Imagine composer: photo chip, seamless prompt, compact tool pills. */
+.reference-studio {grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:36px;}
+.reference-studio .studio-controls {padding:0;border:0;border-radius:0;background:transparent;min-width:0;}
+.imagine-composer {background:#222120;border:1px solid #353432;border-radius:28px;overflow:hidden;}
+.composer-file {display:none;}
+.composer-attachment {padding:16px 20px;border-bottom:1px solid #353432;}
+.attachment-chip {display:inline-flex;align-items:center;gap:14px;padding:8px 13px 8px 8px;border-radius:19px;background:#2d2c2a;color:#aaa;position:relative;}
+.attachment-chip img {width:58px;height:58px;object-fit:cover;border-radius:12px;}
+.attachment-chip button {border:0;background:#43413e;color:#eee;border-radius:50%;display:grid;place-items:center;width:22px;height:22px;margin-left:4px;cursor:pointer;}
+.composer-prompt {display:block;background:transparent;border:0;outline:0;color:#f4f3f1;font:inherit;font-size:20px;line-height:1.55;width:100%;padding:24px;min-height:145px;resize:vertical;}
+.composer-prompt::placeholder {color:#a2a09d;}
+.composer-toolbar {display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:0 20px 19px;}
+.composer-toolbar button {font:inherit;cursor:pointer;flex-shrink:0;}
+.composer-toolbar button:disabled {opacity:.4;cursor:default;}
+.composer-icon {display:grid;place-items:center;width:42px;height:42px;border:0;background:transparent;color:#aaa7a3;border-radius:50%;}
+.composer-icon:hover {background:#353330;color:#fff;}
+.composer-mode,.composer-segments {display:flex;align-items:center;background:#343330;border-radius:28px;padding:4px;}
+.composer-mode button,.composer-segments button {display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;color:#a2a09d;border-radius:23px;height:40px;padding:0 13px;font-size:16px;}
+.composer-mode button[aria-pressed=true],.composer-segments button[aria-pressed=true] {background:#242321;color:#fff;font-weight:600;}
+.composer-segments button {padding:0 12px;}
+.composer-icon.sound-on {border:2px solid #4a4844;color:#fff;}
+.composer-ratio {height:42px;padding:0 9px;border:0;border-radius:22px;background:#2b2a28;color:#ddd;font:inherit;font-size:14px;}
+.composer-submit {display:grid;place-items:center;align-self:center;margin-left:auto;width:48px;height:48px;border:0;border-radius:50%;background:#249bfa;color:#fff;}
+.composer-submit:hover {background:#48adff;}
+.composer-toolbar :focus-visible,.attachment-chip button:focus-visible,.composer-prompt:focus-visible {outline:2px solid #62b8ff;outline-offset:3px;}
+.composer-processing {margin:0;padding:0 24px 16px;color:#aaa;font-size:13px;}
+.reference-studio .usage-action {margin:20px 4px 0;padding:0;border:0;}
+.reference-studio .usage-heading {color:#b7bbbd;}
+@media(max-width:1100px){.reference-studio {grid-template-columns:minmax(0,.85fr) minmax(0,1.3fr);gap:24px;}.composer-toolbar {gap:7px;padding:0 14px 15px;}.composer-mode button,.composer-segments button {padding:0 10px;font-size:14px;}}
+@media(max-width:900px){.reference-studio {grid-template-columns:1fr;gap:24px;}.reference-studio .studio-controls {padding:0;}.composer-prompt {font-size:19px;}}
+@media(max-width:480px){.imagine-composer {border-radius:24px;}.composer-prompt {padding:20px;min-height:130px;font-size:18px;}.composer-toolbar {gap:8px;}.composer-mode button,.composer-segments button {height:36px;padding:0 9px;font-size:14px;}.composer-icon {width:36px;height:36px;}.composer-submit {width:43px;height:43px;}.composer-attachment {padding:13px 16px;}}
