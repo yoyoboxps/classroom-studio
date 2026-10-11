@@ -326,8 +326,8 @@ html::-webkit-scrollbar {width:0;}
 .reference-studio .artwork-toolbar {justify-content:flex-end;}
 .photo-processing {display:flex;align-items:center;gap:8px;}
 
-.reference-studio .video-preview:not(.has-result) {max-height:none;max-width:480px;width:100%;margin:0 auto;}
-.reference-studio .video-preview:not(.has-result) img {width:100%;height:100%;object-fit:cover;}
+.reference-studio .video-preview {max-height:none;max-width:480px;width:100%;margin:0 auto;}
+.reference-studio .video-preview img {width:100%;height:100%;object-fit:contain;}
 .video-options {display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0;}
 .video-options fieldset {border:0;margin:0;padding:0;min-width:0;}
 .video-options legend,.video-options label {font-size:14px;color:#dce1e4;}
