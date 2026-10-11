@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 const pg=new PGlite();
 await pg.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',email_confirmed_at timestamptz,raw_app_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql as $$ select null::uuid $$;`);
-await pg.exec((await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));
+await pg.exec((await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8')).split('-- Personal wallets v1:')[0].replace('create extension if not exists pgcrypto;',''));
 const migration=await readFile(new URL('../supabase/migrations/20261011_credit_batches.sql',import.meta.url),'utf8');
 await pg.exec(migration); // Re-applying migration must preserve data/functions safely.
 async function fixture(total=2000,quota=50){const u=randomUUID(),c=randomUUID();await pg.query('insert into auth.users(id,email) values($1,$2)',[u,`${u}@test.example`]);await pg.query("insert into classes(id,name,total,default_quota,image_cost,video_cost,expires_at) values($1,'batch test',$2,$3,5,25,now()+interval '365 days')",[c,total,quota]);await pg.query('select invite_students($1,$2::text[])',[c,[`${u}@test.example`]]);await pg.query('select claim_memberships($1,$2,$3)',[u,`${u}@test.example`,'Student']);return {u,c,m:(await pg.query('select * from class_members where class_id=$1',[c])).rows[0]};}

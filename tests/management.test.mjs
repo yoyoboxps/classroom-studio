@@ -7,7 +7,7 @@ const pg=new PGlite();
 await pg.exec(`create role anon; create role authenticated; create role service_role;create schema auth;
 create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql as $$select null::uuid$$;`);
-await pg.exec((await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));
+await pg.exec((await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8')).split('-- Personal wallets v1:')[0].replace('create extension if not exists pgcrypto;',''));
 async function setup(){const c=randomUUID(),u=randomUUID();await pg.query(`insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data) values($1,$2,now(),' {"provider":"google"}')`,[u,`${u}@example.com`]);await pg.query(`insert into classes(id,name,total,default_quota,image_cost,video_cost,expires_at,self_enrollment,max_students) values($1,'Manage',1500,100,5,20,now()+interval '10 days',true,15)`,[c]);const m=(await pg.query('select join_class($1,$2) id',[c,u])).rows[0].id;return{c,u,m};}
 const remove=({c,m})=>pg.query('select remove_student($1,$2) returned',[c,m]);
 const restore=({c,m})=>pg.query('select restore_student($1,$2)',[c,m]);

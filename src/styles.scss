@@ -379,3 +379,9 @@ html::-webkit-scrollbar {width:0;}
 
 .credit-expiry { color: #aeb8bf; font-size: 13px; line-height: 1.8; margin: 14px 0; summary { cursor: pointer; } p { margin: 8px 0; } div { padding: 8px 0; border-bottom: 1px solid #333c40; } span { display: block; } strong { color: #e5e9eb; font-weight: 500; } }
 .topup-total { font-weight: 600; font-size: 18px; }
+
+.all-students { margin-bottom: 24px; }
+.wallet-reserved { display:block; margin-top:6px; color:var(--muted); }
+.join-course-details { margin-top:16px; color:var(--muted); }
+.join-course-details summary { cursor:pointer; font-size:14px; }
+.join-course-details .course-entry { margin-top:16px; }
