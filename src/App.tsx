@@ -26,7 +26,7 @@ export default function App() {
  const [photoName,setPhotoName] = useState('');
  const [preparingPhoto,setPreparingPhoto] = useState(false);
  const [busy,setBusy] = useState(false);
- const [result,setResult] = useState<{url:string;kind:'image'|'video'} | null>(null);
+ const [result,setResult] = useState<{url:string;kind:'image'|'video';jobId?:string} | null>(null);
  const [notice,setNotice] = useState('');
  const [mobile,setMobile] = useState(false);
  const [mobileViewport,setMobileViewport] = useState(()=>window.matchMedia('(max-width: 760px)').matches);
@@ -40,6 +40,7 @@ export default function App() {
  const [loading,setLoading] = useState(false);
  const [lastSync,setLastSync] = useState<Date|null>(null);
  const refreshLatest = useRef<()=>Promise<void>>(async()=>{});
+ const [downloading,setDownloading] = useState(false);
  const [saving,setSaving] = useState(false);
  const fileRef = useRef<HTMLInputElement>(null);
  const activeJob = useRef<string | null>(null);
@@ -89,11 +90,33 @@ export default function App() {
  }
  async function login(){ if(!supabase){setModal(null);setNotice('目前為示範模式；正式 Google 登入需設定 Supabase。');return;} if(classId)sessionStorage.setItem('classroom-pending-class',classId);const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});if(error)setNotice(error.message); }
  async function signout(){if(busy||preparingPhoto){setNotice('請等任務完成後再登出。');return;}setResult(null);setPhoto('');if(supabase){await supabase.auth.signOut();setData({role:'student',classes:[],members:[],jobs:[],name:'同學'});}else setNotice('示範模式使用虛擬帳號，不會登出 Google。'); }
- async function poll(id:string){try{const response=await api<{status:Job['status'];url?:string;error?:string}>(`jobs?id=${id}`);if(!alive.current)return;if(response.status==='processing'){pollTimer.current=setTimeout(()=>void poll(id),5000);return;}setBusy(false);activeJob.current=null;if(response.url)setResult({kind,url:response.url});else setNotice(response.error || (response.status==='review'?'任務狀態需要老師確認，暫時保留預扣點數。':'生成未完成，點數已退回。'));void refresh();}catch{if(alive.current){setNotice('正在重新確認生成狀態，請保持頁面開啟。');pollTimer.current=setTimeout(()=>void poll(id),10000);}}}
+ async function poll(id:string){try{const response=await api<{status:Job['status'];url?:string;error?:string}>(`jobs?id=${id}`);if(!alive.current)return;if(response.status==='processing'){pollTimer.current=setTimeout(()=>void poll(id),5000);return;}setBusy(false);activeJob.current=null;if(response.url)setResult({kind,url:response.url,jobId:id});else setNotice(response.error || (response.status==='review'?'任務狀態需要老師確認，暫時保留預扣點數。':'生成未完成，點數已退回。'));void refresh();}catch{if(alive.current){setNotice('正在重新確認生成狀態，請保持頁面開啟。');pollTimer.current=setTimeout(()=>void poll(id),10000);}}}
  async function generate(){if(preparingPhoto)return;if(supabase&&!session){setModal('login');return;}if(!current){setNotice('請先加入班級。');return;}if(!prompt.trim()){setNotice('請先描述你想創作的內容。');return;}if(kind==='video'&&!photo){setNotice('請先選擇一張照片。');return;}if(left<cost){setNotice('剩餘點數不足，請聯絡老師調整額度。');return;}if(!current.active || new Date(current.expires_at).getTime()<Date.now()){setNotice('班級已暫停或課程已到期。');return;}setBusy(true);setResult(null);
  if(!supabase){await new Promise(r=>setTimeout(r,1200));setPrompt('');setBusy(false);setNotice('示範已完成操作檢查；接上模型 API 後才會生成作品與扣點。');return;}
- try{const source=photo;const response=await api<{id:string;url?:string;status:Job['status']}>('generate',{classId:current.id,kind,prompt:prompt.trim(),ratio,image:source||undefined,...(kind==='video'?{duration:videoDuration,resolution:videoResolution,audio:videoAudio}:{}),requestId:crypto.randomUUID()});if(response.url||response.status==='processing')setPrompt('');if(response.url){setResult({kind,url:response.url});setBusy(false);}else if(response.status==='processing'){activeJob.current=response.id;void poll(response.id);}else{setBusy(false);setNotice('任務待確認，請查看使用紀錄或聯絡老師。');}void refresh();}catch(e){setBusy(false);setNotice((e as Error).message);void refresh();}}
- async function download(){if(!result)return;try{const response=await fetch(result.url);if(!response.ok)throw new Error();const blob=await response.blob();const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`classroom-${Date.now()}.${result.kind==='image'?'jpg':'mp4'}`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}catch{window.open(result.url,'_blank','noopener,noreferrer');setNotice('作品已開啟，請使用瀏覽器另存檔案。');}}
+ try{const source=photo;const response=await api<{id:string;url?:string;status:Job['status']}>('generate',{classId:current.id,kind,prompt:prompt.trim(),ratio,image:source||undefined,...(kind==='video'?{duration:videoDuration,resolution:videoResolution,audio:videoAudio}:{}),requestId:crypto.randomUUID()});if(response.url||response.status==='processing')setPrompt('');if(response.url){setResult({kind,url:response.url,jobId:response.id});setBusy(false);}else if(response.status==='processing'){activeJob.current=response.id;void poll(response.id);}else{setBusy(false);setNotice('任務待確認，請查看使用紀錄或聯絡老師。');}void refresh();}catch(e){setBusy(false);setNotice((e as Error).message);void refresh();}}
+ async function download(){
+  if(!result||downloading)return;setDownloading(true);
+  try{
+   let blob:Blob;
+   if(result.kind==='video'){
+    if(!result.jobId)throw new Error('請重新確認影片生成狀態後再下載。');
+    const auth=await supabase?.auth.getSession();const token=auth?.data.session?.access_token;
+    if(!token)throw new Error('請重新登入後下載。');
+    const parts:Blob[]=[];let start=0;
+    for(;;){
+     const response=await fetch(`/api/download?id=${encodeURIComponent(result.jobId)}&start=${start}`,{headers:{Authorization:`Bearer ${token}`}});
+     if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'影片下載失敗，請稍後再試。');}
+     const part=await response.blob();if(!part.size)throw new Error('影片檔案是空的，請稍後再試。');parts.push(part);
+     if(response.status!==206)break;
+     const range=/^bytes (\d+)-(\d+)\/(\d+)$/.exec(response.headers.get('Content-Range')||'');
+     if(!range||Number(range[1])!==start||Number(range[2])+1-start!==part.size)throw new Error('影片傳輸不完整，請重新下載。');
+     start=Number(range[2])+1;if(start>=Number(range[3]))break;
+    }
+    blob=new Blob(parts,{type:'video/mp4'});
+   }else{const response=await fetch(result.url);if(!response.ok)throw new Error('圖片下載失敗，請稍後再試。');blob=await response.blob();}
+   const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`classroom-${Date.now()}.${result.kind==='image'?'jpg':'mp4'}`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
+  }catch(e){setNotice((e as Error).message);}finally{setDownloading(false);}
+ }
  async function formAction(e:FormEvent<HTMLFormElement>){e.preventDefault();if(saving)return;setSaving(true);const f=new FormData(e.currentTarget);try{
  if(modal==='class'){const input={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),total:Number(f.get('total')),default_quota:Number(f.get('quota')),max_students:Number(f.get('capacity')),self_enrollment:true,image_cost:Number(f.get('imageCost')),video_cost:Number(f.get('videoCost')),expires_at:String(f.get('expires'))};if(input.default_quota>input.total)throw new Error('每人額度不可超過班級總點數。');if(supabase)await api('admin',{action:'create',...input});else{const c:Classroom={...input,id:crypto.randomUUID(),used:0,reserved:0,allocated:0,students:0,active:true};setData(d=>({...d,classes:[...d.classes,c]}));setClassId(c.id);}setNotice('班級已建立。');}
  if(modal==='edit-class'){const input={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),total:Number(f.get('total')),default_quota:Number(f.get('quota')),max_students:Number(f.get('capacity')),image_cost:Number(f.get('imageCost')),video_cost:Number(f.get('videoCost')),expires_at:String(f.get('expires')),course_code:String(f.get('code')).trim().toUpperCase(),self_enrollment:f.get('enrollment')==='on'};if(input.total<current.allocated||input.default_quota>input.total)throw new Error('請確認總點數與已分配額度。');if(input.max_students<current.students)throw new Error('人數上限不可低於現有學生人數。');if(supabase)await api('admin',{action:'edit',classId:current.id,...input});else setData(d=>({...d,classes:d.classes.map(c=>c.id===current.id?{...c,...input}:c)}));setNotice('班級設定已更新；現有學生的個人額度不會變更。');}
@@ -139,7 +162,7 @@ export default function App() {
    {!data.classes.length&&<div className="panel empty-class"><BookOpen size={32}/><h2>{admin?'建立你的第一個班級':'尚未加入班級'}</h2><p>{admin?'設定班級額度與名額，再分享網站網址與課程代號。':'輸入老師提供的課程代號，即可加入班級。'}</p>{admin?<button className="primary" onClick={()=>setModal('class')}><Plus size={17}/>建立班級</button>:courseForm}</div>}
    {view==='studio'&&current&&<div className="reference-studio">
     <section className="artwork" aria-label="本次作品預覽">
-     {result&&<div className="artwork-toolbar"><button className="download-button" onClick={()=>void download()}><Download size={21}/>下載{result.kind==='image'?'圖片':'影片'}</button></div>}
+     {result&&<div className="artwork-toolbar"><button className="download-button" disabled={downloading} onClick={()=>void download()}>{downloading?<LoaderCircle className="spin" size={21}/>:<Download size={21}/>} {downloading?'下載中…':`下載${result.kind==='image'?'圖片':'影片'}`}</button></div>}
      <div style={kind==='video'?{aspectRatio:photo?photoAspect:videoRatio.replace(':',' / ')}:undefined} className={`artwork-frame ${kind==='video'?'video-preview':''} ${result?'has-result':''} ${photo?'has-photo':''}`} aria-busy={busy}>{result?(result.kind==='image'?<img src={result.url} alt="本次 AI 生成圖片"/>:<video src={result.url} controls playsInline/>):photo?<img src={photo} alt="本次創作的參考照片" onLoad={e=>setPhotoAspect(`${e.currentTarget.naturalWidth} / ${e.currentTarget.naturalHeight}`)}/>:<div className="artwork-placeholder"><ImagePlus size={42} strokeWidth={1.25}/><span>圖片預覽</span></div>} {busy&&<div className="artwork-loading" role="status"><LoaderCircle className="spin" size={30}/>正在創作中，請保持頁面開啟</div>}</div>
     </section>
     <section className="studio-controls" aria-label="生成設定">
