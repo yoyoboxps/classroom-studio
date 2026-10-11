@@ -395,3 +395,7 @@ html::-webkit-scrollbar {width:0;}
  .text-button:last-child { margin-right:0; }
 }
 .join-course-details { color:#aab2b8; }
+
+.new-class-button { margin-left: auto; white-space: nowrap; }
+.class-gift-summary { display: grid; gap: 8px; padding: 16px; margin: 0 0 20px; border: 1px solid #394147; border-radius: 10px; background: #20272c; color: #e7ecef; font-size: .875rem; small { color: #b8c0c6; line-height: 1.6; } .budget-warning { color: #ffc38b; } }
+@media(max-width:760px) { .class-strip:has(.new-class-button) { flex-wrap: wrap; } .new-class-button { width: 100%; justify-content: center; } }
