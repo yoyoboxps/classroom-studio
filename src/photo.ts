@@ -23,7 +23,7 @@ async function loadImage(blob: Blob): Promise<HTMLImageElement> {
   }
 }
 
-async function jpeg(image: HTMLImageElement): Promise<Blob> {
+async function jpeg(image: HTMLImageElement, maxBytes: number): Promise<Blob> {
   const scale = Math.min(1, 2048 / Math.max(image.naturalWidth, image.naturalHeight));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -31,6 +31,7 @@ async function jpeg(image: HTMLImageElement): Promise<Blob> {
   try {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('照片處理失敗，請重新選擇照片。');
+    for (let attempt=0;attempt<4;attempt++) {
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -38,7 +39,10 @@ async function jpeg(image: HTMLImageElement): Promise<Blob> {
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(value => value ? resolve(value) : reject(new Error('照片處理失敗，請重新選擇照片。')), 'image/jpeg', quality);
       });
-      if (blob.size <= MAX_OUTPUT_BYTES) return blob;
+      if (blob.size <= maxBytes) return blob;
+    }
+    canvas.width = Math.max(1,Math.round(canvas.width*0.75));
+    canvas.height = Math.max(1,Math.round(canvas.height*0.75));
     }
     throw new Error('照片太大，請選擇另一張照片。');
   } finally {
@@ -46,7 +50,7 @@ async function jpeg(image: HTMLImageElement): Promise<Blob> {
   }
 }
 
-export async function preparePhoto(file: File): Promise<string> {
+export async function preparePhoto(file: File, maxOutputBytes = MAX_OUTPUT_BYTES): Promise<string> {
   if (!file.size) throw new Error('照片是空的，請重新選擇照片。');
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('照片需小於 20 MB，請選擇另一張照片。');
   const heif = await isHeif(file);
@@ -67,9 +71,9 @@ export async function preparePhoto(file: File): Promise<string> {
         throw new Error('這張 HEIC 照片無法處理，請重新選擇或換一張照片。');
       }
     }
-    output = await jpeg(image);
-  } else if (file.size > MAX_OUTPUT_BYTES) {
-    output = await jpeg(await loadImage(file));
+    output = await jpeg(image,maxOutputBytes);
+  } else if (file.size > maxOutputBytes) {
+    output = await jpeg(await loadImage(file),maxOutputBytes);
   }
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

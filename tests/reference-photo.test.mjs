@@ -38,3 +38,23 @@ test('decoded photo cannot exceed 3 MB, even if encoded length fits the body lim
  const raw=Buffer.alloc(3*1024*1024+1);raw[0]=255;raw[1]=216;
  assert.throws(()=>validatePhoto('data:image/jpeg;base64,'+raw.toString('base64')),/3 MB/);
 });
+test('five references share one user message and one image generation call',()=>{
+ const photos=Array.from({length:5},(_,i)=>'data:image/jpeg;base64,'+Buffer.from([255,216,255,224,i]).toString('base64'));
+ const validated=exports.validatePhotos(photos);
+ const p=imagePayload('Use photo 1 as the person and photo 2 as the background','3:2',validated);
+ assert.equal(p.input.length,1);assert.equal(p.input[0].role,'user');
+ const references=p.input[0].content.filter(c=>c.type==='input_image');
+ assert.equal(references.length,5);references.forEach((r,i)=>{assert.equal(r.image_url,photos[i]);assert.equal(r.detail,'high');});
+ assert.equal(p.max_tool_calls,1);assert.equal(p.tools.length,1);assert.equal(p.tools[0].action,'edit');
+ assert.match(p.instructions,/all attached source photos/);assert.match(p.input[0].content[0].text,/photo 1 as the person/);
+});
+test('multi-photo validation rejects excess, malformed, mixed and oversized input',()=>{
+ assert.throws(()=>exports.validatePhotos(Array(6).fill(jpeg)),/5/);
+ assert.throws(()=>exports.validatePhotos(jpeg),/清單/);
+ assert.throws(()=>exports.validatePhotos([jpeg],jpeg),/混用/);
+ assert.throws(()=>exports.validatePhotos([jpeg,'https://example.com/photo.jpg']),/有效/);
+ const raw=Buffer.alloc(700*1024);raw[0]=255;raw[1]=216;
+ assert.throws(()=>exports.validatePhotos(Array(5).fill('data:image/jpeg;base64,'+raw.toString('base64'))),/總大小/);
+ assert.equal(exports.validatePhotos(undefined,jpeg)[0],jpeg);
+ assert.equal(imagePayload('Forest','1:1',exports.validatePhotos([])).tools[0].action,'generate');
+});
