@@ -108,7 +108,7 @@ export default function App() {
   if((kind==='image'?imagePhotos.length:0)+files.length>limit){setNotice(kind==='image'?'最多可加入 5 張參考照片，請先移除照片再加入。':'影片生成一次只能使用 1 張照片。');if(fileRef.current)fileRef.current.value='';return;}
   setPreparingPhoto(true);setNotice('');
   try{
-   const prepared=[];
+   const prepared:{id:string;url:string;name:string}[]=[];
    for(const file of files){prepared.push({id:crypto.randomUUID(),url:await preparePhoto(file,kind==='image'?600*1024:3*1024*1024),name:file.name});}
    if(alive.current){if(kind==='image')setImagePhotos(previous=>[...previous,...prepared]);else setVideoPhoto(prepared[0].url);setResult(null);}
   }catch(e){if(alive.current)setNotice((e as Error).message);}
