@@ -417,3 +417,11 @@ html::-webkit-scrollbar {width:0;}
 .composer-photo { position:relative; width:100px; height:100px; border:1px solid #4b4a47; border-radius:16px; background:#2d2c2a; img { width:100%; height:100%; object-fit:cover; border-radius:15px; } button { position:absolute; top:5px; right:5px; display:grid; place-items:center; width:25px; height:25px; padding:0; border:1px solid #ffffff55; border-radius:50%; background:#141414d9; color:white; cursor:pointer; } button:focus-visible {outline:2px solid #62b8ff;outline-offset:3px;} .photo-index { position:absolute; bottom:5px; left:7px; border-radius:5px; padding:1px 5px; font-size:12px; color:white; background:#141414bb; } }
 .composer-photo-count { margin:0; padding:0 24px 16px; font-size:12px; color:#aaa8a5; }
 @media(max-width:480px) { .composer-photo-list { gap:10px; padding:16px 16px 0; } .composer-photo { width:80px; height:80px; } }
+
+.studio-brand img { width:44px; height:44px; object-fit:contain; }
+.sidebar .brand-mark { border:0; width:42px; height:42px; flex-shrink:0; img { width:100%; height:100%; object-fit:contain; } }
+.teacher-login { display:inline-flex; align-items:center; justify-content:center; gap:12px; background:#fff; color:#1f1f1f; border:1px solid #747775; border-radius:8px; padding:12px 20px; min-height:48px; text-decoration:none; font-size:.9rem; font-weight:500; }
+.teacher-login:hover { background:#f2f6fc; }
+.teacher-login:focus-visible { outline:2px solid #62b8ff; outline-offset:3px; }
+.google-login-logo { width:22px; height:22px; flex-shrink:0; }
+@media(max-width:760px) { .studio-brand img { width:36px; height:36px; } .studio-brand { gap:10px; } }
