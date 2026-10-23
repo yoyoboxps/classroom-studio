@@ -27,15 +27,14 @@ export default function App() {
  const [videoAudio,setVideoAudio]=useState(true);
  const [videoRatio,setVideoRatio]=useState('2:3');
  const [photoAspect,setPhotoAspect]=useState('3 / 2');
- const [videoAssets,setVideoAssets]=useState<VideoAssetsState>({first:'',last:'',references:[]});
+ const [videoAssets,setVideoAssets]=useState<VideoAssetsState>({first:'',last:''});
  const previousVideoAssets=useRef(videoAssets);
  useEffect(()=>{const previous=previousVideoAssets.current;previousVideoAssets.current=videoAssets;if(previous!==videoAssets)setPrompt(text=>remapVideoMentions(text,previous,videoAssets));},[videoAssets]);
- const videoReferenceNumber=useRef(0);
  const videoPhoto=videoAssets.first;
  function setVideoPhoto(first:string){setVideoAssets(a=>({...a,first}));}
  const [imagePhotos,setImagePhotos] = useState<{id:string;url:string;name:string}[]>([]);
  const photo=kind==='image'?(imagePhotos[0]?.url||''):videoPhoto;
- function clearPhotos(){setImagePhotos([]);setVideoAssets({first:'',last:'',references:[]});videoReferenceNumber.current=0;}
+ function clearPhotos(){setImagePhotos([]);setVideoAssets({first:'',last:''});}
  const [preparingPhoto,setPreparingPhoto] = useState(false);
  const [busy,setBusy] = useState(false);
  const [result,setResult] = useState<{url:string;kind:'image'|'video';jobId?:string} | null>(null);
@@ -111,22 +110,22 @@ export default function App() {
  function switchKind(k:'image'|'video'){if(busy||preparingPhoto)return;setKind(k);setResult(null);}
  async function upload(files:File[],target:VideoUploadTarget='first'){
   if(!files.length||busy||preparingPhoto)return;
-  const limit=kind==='image'||target==='references'?5:1;
-  if((kind==='image'?imagePhotos.length:target==='references'?videoAssets.references.length:0)+files.length>limit){setNotice(kind==='image'?'最多可加入 5 張參考照片，請先移除照片再加入。':target==='references'?'最多可加入 5 張影片參考照片。':'起始幀與最後幀各使用 1 張照片。');if(fileRef.current)fileRef.current.value='';return;}
+  const limit=kind==='image'?5:1;
+  if((kind==='image'?imagePhotos.length:0)+files.length>limit){setNotice(kind==='image'?'最多可加入 5 張參考照片，請先移除照片再加入。':'首幀與結束幀各使用 1 張照片。');if(fileRef.current)fileRef.current.value='';return;}
   setPreparingPhoto(true);setNotice('');
   try{
    const prepared:{id:string;url:string;name:string}[]=[];
    for(const file of files){prepared.push({id:crypto.randomUUID(),url:await preparePhoto(file,kind==='image'?600*1024:400*1024),name:file.name});}
-   if(alive.current){if(kind==='image')setImagePhotos(previous=>[...previous,...prepared]);else if(target==='first')setVideoPhoto(prepared[0].url);else if(target==='last')setVideoAssets(a=>({...a,last:prepared[0].url}));else{const refs=prepared.map(p=>({...p,name:`圖片${++videoReferenceNumber.current}`}));setVideoAssets(a=>({...a,references:[...a.references,...refs]}));}setResult(null);}
+   if(alive.current){if(kind==='image')setImagePhotos(previous=>[...previous,...prepared]);else if(target==='first')setVideoPhoto(prepared[0].url);else if(target==='last')setVideoAssets(a=>({...a,last:prepared[0].url}));setResult(null);}
   }catch(e){if(alive.current)setNotice((e as Error).message);}
   finally{if(fileRef.current)fileRef.current.value='';if(alive.current)setPreparingPhoto(false);}
  }
  async function login(){ if(!supabase){setModal(null);setNotice('目前為示範模式；正式 Google 登入需設定 Supabase。');return;} if(classId)sessionStorage.setItem('classroom-pending-class',classId);const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});if(error)setNotice(error.message); }
  async function signout(){if(busy||preparingPhoto){setNotice('請等任務完成後再登出。');return;}setResult(null);clearPhotos();if(supabase){await supabase.auth.signOut();setData({role:'student',classes:[],members:[],jobs:[],name:'同學'});}else setNotice('示範模式使用虛擬帳號，不會登出 Google。'); }
  async function poll(id:string){try{const response=await api<{status:Job['status'];url?:string;error?:string}>(`jobs?id=${id}`);if(!alive.current)return;if(response.status==='processing'){pollTimer.current=setTimeout(()=>void poll(id),5000);return;}setBusy(false);activeJob.current=null;if(response.url)setResult({kind,url:response.url,jobId:id});else setNotice(response.error || (response.status==='review'?'任務狀態需要老師確認，暫時保留預扣點數。':'生成未完成，點數已退回。'));void refresh();}catch{if(alive.current){setNotice('正在重新確認生成狀態，請保持頁面開啟。');pollTimer.current=setTimeout(()=>void poll(id),10000);}}}
- async function generate(){if(preparingPhoto)return;if(supabase&&!session){setModal('login');return;}if(!prompt.trim()){setNotice('請先描述你想創作的內容。');return;}if(kind==='video'){try{replaceVideoMentions(prompt,videoAssets.references.map(r=>r.name),!!videoAssets.first,!!videoAssets.last);}catch(e){setNotice((e as Error).message);return;}}if(left<cost){setNotice('剩餘點數不足，請聯絡管理者儲值或加入課程領取贈點。');return;}setBusy(true);setResult(null);
+ async function generate(){if(preparingPhoto)return;if(supabase&&!session){setModal('login');return;}if(!prompt.trim()){setNotice('請先描述你想創作的內容。');return;}if(kind==='video'){try{replaceVideoMentions(prompt,!!videoAssets.first,!!videoAssets.last);}catch(e){setNotice((e as Error).message);return;}}if(left<cost){setNotice('剩餘點數不足，請聯絡管理者儲值或加入課程領取贈點。');return;}setBusy(true);setResult(null);
  if(!supabase){await new Promise(r=>setTimeout(r,1200));setPrompt('');setBusy(false);setNotice('示範已完成操作檢查；接上模型 API 後才會生成作品與扣點。');return;}
- try{const source=photo;const response=await api<{id:string;url?:string;status:Job['status']}>('generate',{kind,prompt:prompt.trim(),ratio,...(kind==='image'?{images:imagePhotos.map(p=>p.url)}:{image:source||undefined}),...(kind==='video'?{duration:videoDuration,resolution:videoResolution,audio:videoAudio,videoRatio,lastFrame:videoAssets.last||undefined,references:videoAssets.references.map(r=>({name:r.name,image:r.url}))}:{}),requestId:crypto.randomUUID()});if(response.url||response.status==='processing')setPrompt('');if(response.url){setResult({kind,url:response.url,jobId:response.id});setBusy(false);}else if(response.status==='processing'){activeJob.current=response.id;void poll(response.id);}else{setBusy(false);setNotice('任務待確認，請查看使用紀錄或聯絡老師。');}void refresh();}catch(e){setBusy(false);setNotice((e as Error).message);void refresh();}}
+ try{const source=photo;const response=await api<{id:string;url?:string;status:Job['status']}>('generate',{kind,prompt:prompt.trim(),ratio,...(kind==='image'?{images:imagePhotos.map(p=>p.url)}:{image:source||undefined}),...(kind==='video'?{duration:videoDuration,resolution:videoResolution,audio:videoAudio,videoRatio,lastFrame:videoAssets.last||undefined}:{}),requestId:crypto.randomUUID()});if(response.url||response.status==='processing')setPrompt('');if(response.url){setResult({kind,url:response.url,jobId:response.id});setBusy(false);}else if(response.status==='processing'){activeJob.current=response.id;void poll(response.id);}else{setBusy(false);setNotice('任務待確認，請查看使用紀錄或聯絡老師。');}void refresh();}catch(e){setBusy(false);setNotice((e as Error).message);void refresh();}}
  async function download(){
   if(!result||downloading)return;setDownloading(true);
   try{
@@ -218,7 +217,7 @@ export default function App() {
      <div className="imagine-composer">
       <input className="composer-file" id="source-photo" aria-label="上傳照片" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" disabled={busy||preparingPhoto} ref={fileRef} multiple={kind==='image'} onChange={e=>void upload(Array.from(e.target.files||[]))}/>
       {kind==='image'&&imagePhotos.length>0&&<div className="composer-photo-list" aria-label="參考照片">{imagePhotos.map((p,index)=><div className="composer-photo" key={p.id}><img src={p.url} alt={`參考照片 ${index+1}：${p.name}`}/><span className="photo-index">{index+1}</span><button type="button" aria-label={`移除參考照片 ${index+1}`} title={`移除 ${p.name}`} disabled={busy||preparingPhoto} onClick={()=>{setImagePhotos(photos=>photos.filter(item=>item.id!==p.id));setResult(null);}}><X size={15}/></button></div>)}</div>}
-      {kind==='video'&&<VideoAssets assets={videoAssets} disabled={busy||preparingPhoto} onUpload={(files,target)=>void upload(files,target)} onFirstLoad={setPhotoAspect} onRemove={(target,id)=>{setVideoAssets(a=>target==='first'?{...a,first:'',last:''}:target==='last'?{...a,last:''}:{...a,references:a.references.filter(r=>r.id!==id)});setResult(null);}}/>}
+      {kind==='video'&&<VideoAssets assets={videoAssets} disabled={busy||preparingPhoto} onUpload={(files,target)=>void upload(files,target)} onFirstLoad={setPhotoAspect} onRemove={target=>{setVideoAssets(a=>target==='first'?{...a,first:'',last:''}:{...a,last:''});setResult(null);}}/>}
       {kind==='video'?<VideoPrompt assets={videoAssets} value={prompt} onChange={setPrompt} disabled={busy||preparingPhoto}/>:<textarea className="composer-prompt" id="prompt" aria-label="畫面描述" value={prompt} maxLength={2000} disabled={busy||preparingPhoto} onChange={e=>setPrompt(e.target.value)} placeholder={imagePhotos.length?'描述你想如何使用這些照片…':'輸入你的想像…'}/>}
       <p className="composer-model">使用模型：{kind==='image'?'GPT Image 2.5':'Grok Imagine Video 1.5'}</p>
       <div className="composer-toolbar">

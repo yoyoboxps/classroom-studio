@@ -7,7 +7,7 @@ export default async(req:Request)=>{let reservedId:string|undefined;let client:R
  const id=uuid(b.requestId);
  if(!['image','video'].includes(b.kind)||typeof b.prompt!=='string'||!b.prompt.trim()||b.prompt.length>2000)throw new HttpError(400,'請填寫 1–2,000 字的創作描述。');
  if(b.kind==='image'&&!['1:1','3:2','2:3'].includes(b.ratio))throw new HttpError(400,'圖片比例不正確。');
- if(b.kind==='video'&&b.images!==undefined)throw new HttpError(400,'影片生成一次只能使用 1 張照片。');
+ if(b.kind==='video'&&b.images!==undefined)throw new HttpError(400,'影片請分別上傳首幀與結束幀。');
  if(b.kind==='image'&&(b.lastFrame!==undefined||b.references!==undefined))throw new HttpError(400,'影片素材不可用於圖片生成。');
  const photos=b.kind==='image'?validatePhotos(b.images,b.image):[];
  const photo=b.kind==='video'&&b.image!==undefined?validatePhoto(b.image):undefined;

@@ -29,49 +29,30 @@ test('text-to-video omits image and sends the selected ratio',()=>{
  assert.throws(()=>exports.videoPayload('Scene',undefined,{ratio:'invalid'}),e=>e.status===400);
 });
 
-test('first and last frames and references are sent separately with correct mention offsets',()=>{
- const p=exports.videoPayload('讓 @圖片3 的人物從 @起始幀 走向 @最後幀',photo,{lastFrame:photo,references:[{name:'圖片3',image:photo}],duration:10,resolution:'720p',audio:false});
- assert.equal(p.image.url,photo);assert.equal(p.last_frame.url,photo);assert.equal(p.reference_images[0].url,photo);
- assert.match(p.prompt,/<IMAGE_1>/);assert.match(p.prompt,/<IMAGE_0>/);assert.match(p.prompt,/提供的最後幀圖片/);
+
+test('first and last frames use only image and last_frame, with official-style aliases',()=>{
+ const p=exports.videoPayload('從 @image1 轉換至 @image2',photo,{lastFrame:photo,duration:10,resolution:'720p',audio:false});
+ assert.equal(p.image.url,photo);assert.equal(p.last_frame.url,photo);assert.equal(p.reference_images,undefined);
+ assert.equal(p.prompt,'從 提供的首幀圖片 轉換至 提供的結束幀圖片');
  assert.equal(p.duration,10);assert.equal(p.resolution,'720p');assert.equal(p.generate_audio,false);assert.equal(p.aspect_ratio,undefined);
 });
-test('references without a first frame start at IMAGE_0 and preserve stable names after removal',()=>{
- const p=exports.videoPayload('讓 @圖片3 出現在 @圖片7 的場景',undefined,{references:[{name:'圖片3',image:photo},{name:'圖片7',image:photo}],ratio:'16:9'});
- assert.equal(p.prompt,'讓 <IMAGE_0> 出現在 <IMAGE_1> 的場景');assert.equal(p.image,undefined);assert.equal(p.aspect_ratio,'16:9');
- assert.throws(()=>exports.videoPayload('@圖片1',undefined,{references:[{name:'圖片3',image:photo}]}),/已移除/);
- assert.throws(()=>exports.videoPayload('@起始幀',undefined,{}),/起始幀已移除/);
- assert.throws(()=>exports.videoPayload('@最後幀',photo,{}),/最後幀已移除/);
-});
-test('bad reference payloads and unavailable models fail before provider submission',()=>{
- for(const references of [null,{},[null],[{name:'人物',image:photo}],[{name:'圖片1',image:'https://example.com/x.jpg'}],Array(6).fill({name:'圖片1',image:photo}),[{name:'圖片1',image:photo},{name:'圖片1',image:photo}]])assert.throws(()=>exports.videoPayload('motion',photo,{references}));
+test('extra photos, missing first frame and missing aliases fail before provider submission',()=>{
+ for(const references of [[],null,{},[{name:'圖片1',image:photo}],Array(5).fill({image:photo})])assert.throws(()=>exports.videoPayload('motion',photo,{references}),e=>e.status===400);
+ assert.throws(()=>exports.videoPayload('motion',undefined,{lastFrame:photo}),e=>e.status===400);
+ assert.throws(()=>exports.videoPayload('@image2',photo,{}),/不存在/);
+ assert.throws(()=>exports.videoPayload('@image3',photo,{lastFrame:photo}),/不存在/);
+ assert.throws(()=>exports.videoPayload('@image1',undefined,{}),/不存在/);
+ assert.throws(()=>exports.videoPayload('@已移除image2',photo,{}),/已移除/);
  assert.throws(()=>exports.videoPayload('motion',photo,{lastFrame:'https://example.com/x.jpg'}));
  videoModel='grok-imagine-video';try{assert.throws(()=>exports.videoPayload('motion',photo,{lastFrame:photo}),e=>e.status===503);}finally{videoModel='grok-imagine-video-1.5';}
 });
-test('combined video photo size fits the existing request limit',()=>{
- const raw=Buffer.alloc(1100*1024);raw[0]=255;raw[1]=216;const big='data:image/jpeg;base64,'+raw.toString('base64');
- assert.throws(()=>exports.videoPayload('motion',big,{lastFrame:big,references:[{name:'圖片1',image:big}]}),e=>e.status===413);
+test('frame photos remain subject to combined request limits',()=>{
+ const raw=Buffer.alloc(1600*1024);raw[0]=255;raw[1]=216;const big='data:image/jpeg;base64,'+raw.toString('base64');
+ assert.throws(()=>exports.videoPayload('motion',big,{lastFrame:big}),e=>e.status===413);
 });
-test('mention discovery supports Chinese text, caret in middle and completed selections',()=>{
- assert.equal(mentionExports.mentionAtCaret('讓@圖片',4).query,'圖片');
- assert.equal(mentionExports.mentionAtCaret('讓@圖片3 走路',5).start,1);
- assert.equal(mentionExports.mentionAtCaret('讓@圖片3 走路',8),null);
- assert.equal(mentionExports.mentionAtCaret('hello',5),null);
- assert.equal(mentionExports.replaceVideoMentions('@圖片1 和 @圖片10',['圖片1','圖片10'],false,false),'<IMAGE_0> 和 <IMAGE_1>');
-});
-
-test('official-style aliases map first, references and last to their real inputs',()=>{
- const p=exports.videoPayload('@image1 / @image2 / @image3',photo,{lastFrame:photo,references:[{name:'圖片9',image:photo}]});
- assert.equal(p.prompt,'<IMAGE_0> / <IMAGE_1> / 提供的最後幀圖片');
- assert.equal(exports.videoPayload('@image1',photo,{}).prompt,'提供的起始幀圖片');
- assert.equal(exports.videoPayload('@image1',undefined,{references:[{name:'圖片9',image:photo}]}).prompt,'<IMAGE_0>');
- assert.throws(()=>exports.videoPayload('@image2',photo,{}),/不存在/);
- assert.throws(()=>exports.videoPayload('@已移除image1',photo,{}),/已移除/);
-});
-test('photo aliases follow their original assets when uploads or removals change numbering',()=>{
- const before={first:'first.jpg',last:'last.jpg',references:[{id:'a',name:'圖片1',url:'a.jpg'},{id:'b',name:'圖片2',url:'b.jpg'}]};
- const after={...before,references:[before.references[1]]};
- assert.equal(mentionExports.remapVideoMentions('@image1 @image2 @image3 @image4',before,after),'@image1 @已移除image2 @image2 @image3');
- const added={...before,references:[...before.references,{id:'c',name:'圖片3',url:'c.jpg'}]};
- assert.equal(mentionExports.remapVideoMentions('@image4',before,added),'@image5');
- assert.deepEqual(Array.from(mentionExports.videoMentions(after),m=>m.name),['image1','image2','image3']);
+test('only two frame mentions are offered and removed frames never point at another photo',()=>{
+ const before={first:'first.jpg',last:'last.jpg'},after={first:'first.jpg',last:''};
+ assert.deepEqual(Array.from(mentionExports.videoMentions(before),m=>m.name),['image1','image2']);
+ assert.equal(mentionExports.remapVideoMentions('@image1 @image2',before,after),'@image1 @已移除image2');
+ assert.equal(mentionExports.mentionAtCaret('use @image',10).query,'image');
 });

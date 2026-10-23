@@ -61,13 +61,11 @@ export function videoPayload(prompt:string,photo:string|undefined,options:{durat
  const ratio=options.ratio??'2:3';
  if(photo===undefined&&!['1:1','2:3','3:2','9:16','16:9'].includes(ratio as string))throw new HttpError(400,'影片比例不正確。');
  const first=photo===undefined?undefined:validatePhoto(photo),last=options.lastFrame===undefined?undefined:validatePhoto(options.lastFrame);
- if(options.references!==undefined&&!Array.isArray(options.references))throw new HttpError(400,'參考照片清單格式不正確。');
- const rawRefs=(options.references??[]) as unknown[];if(rawRefs.length>5)throw new HttpError(400,'最多可加入 5 張影片參考照片。');
- const references=rawRefs.map(value=>{if(!value||typeof value!=='object'||Array.isArray(value))throw new HttpError(400,'參考照片格式不正確。');const r=value as Record<string,unknown>;if(typeof r.name!=='string'||!/^圖片[1-9]\d{0,5}$/.test(r.name))throw new HttpError(400,'參考照片名稱不正確。');return {name:r.name,url:validatePhoto(r.image)};});
- if(new Set(references.map(r=>r.name)).size!==references.length)throw new HttpError(400,'參考照片名稱不可重複。');
- const inputs=[...(first?[first]:[]),...(last?[last]:[]),...references.map(r=>r.url)];
+ if(options.references!==undefined)throw new HttpError(400,'影片只接受首幀與結束幀，不支援額外參考照片。');
+ if(last&&!first)throw new HttpError(400,'請先上傳首幀，再新增結束幀。');
+ const inputs=[...(first?[first]:[]),...(last?[last]:[])];
  if(inputs.reduce((sum,url)=>sum+Buffer.from(url.split(',')[1],'base64').length,0)>3*1024*1024)throw new HttpError(413,'影片照片總大小需小於 3 MB，請重新上傳照片。');
- const model=env('XAI_VIDEO_MODEL');if((last||references.length)&&model!=='grok-imagine-video-1.5')throw new HttpError(503,'目前的影片模型尚未設定為支援最後幀與參考照片的版本，請聯絡管理者。');
- let resolvedPrompt:string;try{resolvedPrompt=replaceVideoMentions(prompt,references.map(r=>r.name),!!first,!!last);}catch(e){throw new HttpError(400,(e as Error).message);}
- return {model,prompt:resolvedPrompt,...(first?{image:{url:first}}:{aspect_ratio:ratio}),...(last?{last_frame:{url:last}}:{}),...(references.length?{reference_images:references.map(r=>({url:r.url}))}:{}),duration,resolution,generate_audio:audio};
+ const model=env('XAI_VIDEO_MODEL');if(last&&model!=='grok-imagine-video-1.5')throw new HttpError(503,'目前的影片模型尚未設定為支援結束幀的版本，請聯絡管理者。');
+ let resolvedPrompt:string;try{resolvedPrompt=replaceVideoMentions(prompt,!!first,!!last);}catch(e){throw new HttpError(400,(e as Error).message);}
+ return {model,prompt:resolvedPrompt,...(first?{image:{url:first}}:{aspect_ratio:ratio}),...(last?{last_frame:{url:last}}:{}),duration,resolution,generate_audio:audio};
 }
