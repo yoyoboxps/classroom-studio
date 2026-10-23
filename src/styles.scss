@@ -427,3 +427,14 @@ html::-webkit-scrollbar {width:0;}
 @media(max-width:760px) { .studio-brand img { width:36px; height:36px; } .studio-brand { gap:10px; } }
 
 .big-icon.login-brand-avatar { width:88px; height:88px; background:transparent; border-radius:0; img { width:100%; height:100%; object-fit:contain; } }
+
+.video-assets { padding:20px 20px 0; }
+.video-frame-list { display:flex; flex-wrap:wrap; gap:12px; align-items:stretch; }
+.video-asset { width:100px; height:116px; position:relative; background:#2d2c2a; border:1px solid #4b4a47; border-radius:12px; overflow:hidden; >img { width:100%; height:88px; object-fit:cover; display:block; } >span { display:block; text-align:center; padding:5px; font-size:12px; color:#e6e5e3; } }
+.video-asset-remove { position:absolute; top:5px; right:5px; width:24px; height:24px; padding:0; border:1px solid #ffffff55; border-radius:50%; display:grid; place-items:center; background:#141414d9; color:#fff; cursor:pointer; }
+.video-asset-add { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-width:100px; min-height:116px; border:1px dashed #686561; border-radius:12px; padding:12px; background:transparent; color:#c8c6c3; font:inherit; font-size:13px; cursor:pointer; >span { font-size:11px; color:#a29f9b; } &:disabled { opacity:.4; cursor:default; } }
+.video-prompt-area { position:relative; }
+.mention-open { margin:0 24px 12px; padding:4px 0; background:transparent; border:0; color:#9ed1ff; font:inherit; font-size:13px; cursor:pointer; }
+.video-mention-menu { margin:0 20px 14px; max-height:240px; overflow:auto; border:1px solid #57534f; border-radius:12px; background:#2b2926; padding:6px; button { display:flex; align-items:center; gap:10px; width:100%; padding:8px; border:0; border-radius:7px; background:transparent; color:#eee; text-align:left; font:inherit; font-size:14px; cursor:pointer; img { width:38px; height:38px; object-fit:cover; border-radius:6px; } &[aria-selected='true'], &:hover { background:#41403d; } } p { color:#aaa8a5; padding:6px 10px; font-size:13px; } }
+.video-asset-add:focus-visible,.video-asset-remove:focus-visible,.mention-open:focus-visible,.video-mention-menu button:focus-visible { outline:2px solid #62b8ff; outline-offset:3px; }
+@media(max-width:480px) { .video-assets { padding:16px 16px 0; } .video-frame-list { gap:10px; } .video-asset,.video-asset-add { width:88px; min-width:88px; } }

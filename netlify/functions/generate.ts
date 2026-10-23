@@ -8,9 +8,10 @@ export default async(req:Request)=>{let reservedId:string|undefined;let client:R
  if(!['image','video'].includes(b.kind)||typeof b.prompt!=='string'||!b.prompt.trim()||b.prompt.length>2000)throw new HttpError(400,'請填寫 1–2,000 字的創作描述。');
  if(b.kind==='image'&&!['1:1','3:2','2:3'].includes(b.ratio))throw new HttpError(400,'圖片比例不正確。');
  if(b.kind==='video'&&b.images!==undefined)throw new HttpError(400,'影片生成一次只能使用 1 張照片。');
+ if(b.kind==='image'&&(b.lastFrame!==undefined||b.references!==undefined))throw new HttpError(400,'影片素材不可用於圖片生成。');
  const photos=b.kind==='image'?validatePhotos(b.images,b.image):[];
  const photo=b.kind==='video'&&b.image!==undefined?validatePhoto(b.image):undefined;
- const key=env(b.kind==='image'?'OPENAI_API_KEY':'XAI_API_KEY');const payload=b.kind==='image'?imagePayload(b.prompt.trim(),b.ratio,photos):videoPayload(b.prompt.trim(),photo,{duration:b.duration,resolution:b.resolution,audio:b.audio,ratio:b.videoRatio});
+ const key=env(b.kind==='image'?'OPENAI_API_KEY':'XAI_API_KEY');const payload=b.kind==='image'?imagePayload(b.prompt.trim(),b.ratio,photos):videoPayload(b.prompt.trim(),photo,{duration:b.duration,resolution:b.resolution,audio:b.audio,ratio:b.videoRatio,lastFrame:b.lastFrame,references:b.references});
  const {data:job,error}=await client.rpc('wallet_reserve',{p_user:auth.user.id,p_id:id,p_kind:b.kind,p_cost:generationCost(b.kind,b.duration,b.resolution)});check(error);
  if(job.existing)return json({id,status:job.status});reservedId=id;
  const response=await providerRequest(b.kind==='image'?'https://api.openai.com/v1/responses':'https://api.x.ai/v1/videos/generations',key,{method:'POST',body:JSON.stringify(payload)});
