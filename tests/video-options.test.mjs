@@ -58,3 +58,20 @@ test('mention discovery supports Chinese text, caret in middle and completed sel
  assert.equal(mentionExports.mentionAtCaret('hello',5),null);
  assert.equal(mentionExports.replaceVideoMentions('@圖片1 和 @圖片10',['圖片1','圖片10'],false,false),'<IMAGE_0> 和 <IMAGE_1>');
 });
+
+test('official-style aliases map first, references and last to their real inputs',()=>{
+ const p=exports.videoPayload('@image1 / @image2 / @image3',photo,{lastFrame:photo,references:[{name:'圖片9',image:photo}]});
+ assert.equal(p.prompt,'<IMAGE_0> / <IMAGE_1> / 提供的最後幀圖片');
+ assert.equal(exports.videoPayload('@image1',photo,{}).prompt,'提供的起始幀圖片');
+ assert.equal(exports.videoPayload('@image1',undefined,{references:[{name:'圖片9',image:photo}]}).prompt,'<IMAGE_0>');
+ assert.throws(()=>exports.videoPayload('@image2',photo,{}),/不存在/);
+ assert.throws(()=>exports.videoPayload('@已移除image1',photo,{}),/已移除/);
+});
+test('photo aliases follow their original assets when uploads or removals change numbering',()=>{
+ const before={first:'first.jpg',last:'last.jpg',references:[{id:'a',name:'圖片1',url:'a.jpg'},{id:'b',name:'圖片2',url:'b.jpg'}]};
+ const after={...before,references:[before.references[1]]};
+ assert.equal(mentionExports.remapVideoMentions('@image1 @image2 @image3 @image4',before,after),'@image1 @已移除image2 @image2 @image3');
+ const added={...before,references:[...before.references,{id:'c',name:'圖片3',url:'c.jpg'}]};
+ assert.equal(mentionExports.remapVideoMentions('@image4',before,added),'@image5');
+ assert.deepEqual(Array.from(mentionExports.videoMentions(after),m=>m.name),['image1','image2','image3']);
+});

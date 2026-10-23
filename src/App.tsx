@@ -7,7 +7,7 @@ import { api, supabase } from './api';
 import { loadDemo, freshDemo, reconcileDemo } from './demo';
 import { preparePhoto } from './photo';
 import {VideoAssets,VideoPrompt} from './VideoComposer';
-import {replaceVideoMentions,type VideoAssetsState,type VideoUploadTarget} from './video-references';
+import {replaceVideoMentions,remapVideoMentions,type VideoAssetsState,type VideoUploadTarget} from './video-references';
 
 type View = 'studio' | 'history' | 'guide' | 'admin';
 const inspirations = [ { name:'自然寫實', prompt:'一隻小狐狸坐在清晨的森林裡，柔和陽光穿過樹葉，自然攝影，細緻毛髮。', icon:'🌿' }, { name:'故事插畫', prompt:'一座漂浮在雲上的小小書店，溫暖燈光、奇幻故事插畫、豐富細節。', icon:'📚' }, { name:'產品設計', prompt:'一盞以海浪為靈感的桌燈，簡約產品攝影、淺色背景、柔和陰影。', icon:'💡' } ];
@@ -28,6 +28,8 @@ export default function App() {
  const [videoRatio,setVideoRatio]=useState('2:3');
  const [photoAspect,setPhotoAspect]=useState('3 / 2');
  const [videoAssets,setVideoAssets]=useState<VideoAssetsState>({first:'',last:'',references:[]});
+ const previousVideoAssets=useRef(videoAssets);
+ useEffect(()=>{const previous=previousVideoAssets.current;previousVideoAssets.current=videoAssets;if(previous!==videoAssets)setPrompt(text=>remapVideoMentions(text,previous,videoAssets));},[videoAssets]);
  const videoReferenceNumber=useRef(0);
  const videoPhoto=videoAssets.first;
  function setVideoPhoto(first:string){setVideoAssets(a=>({...a,first}));}

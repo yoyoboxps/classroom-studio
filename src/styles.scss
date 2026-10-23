@@ -438,3 +438,5 @@ html::-webkit-scrollbar {width:0;}
 .video-mention-menu { margin:0 20px 14px; max-height:240px; overflow:auto; border:1px solid #57534f; border-radius:12px; background:#2b2926; padding:6px; button { display:flex; align-items:center; gap:10px; width:100%; padding:8px; border:0; border-radius:7px; background:transparent; color:#eee; text-align:left; font:inherit; font-size:14px; cursor:pointer; img { width:38px; height:38px; object-fit:cover; border-radius:6px; } &[aria-selected='true'], &:hover { background:#41403d; } } p { color:#aaa8a5; padding:6px 10px; font-size:13px; } }
 .video-asset-add:focus-visible,.video-asset-remove:focus-visible,.mention-open:focus-visible,.video-mention-menu button:focus-visible { outline:2px solid #62b8ff; outline-offset:3px; }
 @media(max-width:480px) { .video-assets { padding:16px 16px 0; } .video-frame-list { gap:10px; } .video-asset,.video-asset-add { width:88px; min-width:88px; } }
+
+.video-asset span small,.video-mention-menu button span small{display:block;font-size:10px;font-weight:400;opacity:.6;margin-top:2px}.video-asset{min-height:128px}
