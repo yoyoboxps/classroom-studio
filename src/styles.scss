@@ -425,3 +425,5 @@ html::-webkit-scrollbar {width:0;}
 .teacher-login:focus-visible { outline:2px solid #62b8ff; outline-offset:3px; }
 .google-login-logo { width:22px; height:22px; flex-shrink:0; }
 @media(max-width:760px) { .studio-brand img { width:36px; height:36px; } .studio-brand { gap:10px; } }
+
+.big-icon.login-brand-avatar { width:88px; height:88px; background:transparent; border-radius:0; img { width:100%; height:100%; object-fit:contain; } }
